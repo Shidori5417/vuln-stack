@@ -17,7 +17,7 @@
     "better-auth": "^1.7.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "ioredis": "^5.11.1",
+    "ioredis": "^6.0.0",
     "lucide-react": "~1.53.0",
     "next": "16.4.0",
     "radix-ui": "^1.8.1",

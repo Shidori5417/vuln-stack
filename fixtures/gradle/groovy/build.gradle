@@ -1,0 +1,14 @@
+ext {
+    springVersion = '5.3.0'
+}
+def snakeVersion = '1.26'
+
+dependencies {
+    implementation 'org.springframework:spring-core:5.2.0.RELEASE'
+    implementation "org.springframework:spring-web:${springVersion}"
+    compile group: 'org.yaml', name: 'snakeyaml', version: snakeVersion
+    runtimeOnly 'com.h2database:h2:1.4.+'
+    testImplementation group: 'junit', name: 'junit', version: '4.12'
+    implementation "io.netty:netty-all:$unknownVersion"
+    implementation 'org.slf4j:slf4j-api'
+}

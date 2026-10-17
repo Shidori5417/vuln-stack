@@ -1,0 +1,17 @@
+{
+    "_meta": {
+        "hash": {"sha256": "0000"},
+        "pipfile-spec": 6,
+        "requires": {"python_version": "3.10"},
+        "sources": [{"name": "pypi", "url": "https://pypi.org/simple", "verify_ssl": true}]
+    },
+    "default": {
+        "flask": {"hashes": [], "index": "pypi", "version": "==1.0"},
+        "jinja2": {"hashes": [], "version": "==2.10"},
+        "werkzeug": {"hashes": [], "version": "==0.14.1"},
+        "mylib": {"git": "https://github.com/me/mylib.git", "ref": "abc"}
+    },
+    "develop": {
+        "pytest": {"hashes": [], "index": "pypi", "version": "==8.0.0"}
+    }
+}

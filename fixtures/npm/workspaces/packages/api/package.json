@@ -1,0 +1,8 @@
+{
+  "name": "@ws/api",
+  "version": "1.0.0",
+  "dependencies": {
+    "jsonwebtoken": "8.5.1",
+    "@ws/web": "1.0.0"
+  }
+}

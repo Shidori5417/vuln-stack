@@ -1,0 +1,9 @@
+{
+  "name": "@pnpm-app/web",
+  "version": "1.0.0",
+  "dependencies": {
+    "lodash": "4.17.15",
+    "react-dom": "16.0.0",
+    "react": "16.0.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "yarn-berry-app",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "dependencies": {
+    "express": "4.17.1",
+    "resolve": "^1.20.0"
+  },
+  "devDependencies": {
+    "minimist": "1.2.0"
+  }
+}

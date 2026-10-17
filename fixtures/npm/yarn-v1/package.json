@@ -1,0 +1,12 @@
+{
+  "name": "yarn-classic-app",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "dependencies": {
+    "lodash": "^4.17.15",
+    "my-minimist": "npm:minimist@1.2.0"
+  },
+  "devDependencies": {
+    "mkdirp": "0.5.1"
+  }
+}

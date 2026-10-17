@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "poetry-app"
+version = "0.1.0"
+description = ""
+authors = []
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Django = "4.1"
+requests = { version = "^2.19", extras = ["socks"] }
+internal-lib = { path = "../internal-lib", develop = true }
+
+[tool.poetry.group.dev.dependencies]
+PyYAML = "5.3"

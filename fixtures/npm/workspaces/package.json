@@ -1,0 +1,8 @@
+{
+  "name": "ws-root",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "devDependencies": {
+    "minimist": "1.2.5"
+  }
+}

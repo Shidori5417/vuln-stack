@@ -1,0 +1,37 @@
+# Example workflow; copy to .github/workflows/vulnstack.yml in your repository.
+name: Dependency vulnerabilities
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  with-action:
+    runs-on: ubuntu-latest
+    # The action uploads SARIF to code scanning, which needs security-events: write.
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: vulnstack/vulnstack@v1
+        with:
+          fail-on: high
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  with-npx:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes vulnstack scan --fail-on high

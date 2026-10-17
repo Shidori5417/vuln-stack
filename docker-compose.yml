@@ -1,0 +1,55 @@
+# Usage: cp .env.example .env, edit it, then `docker compose up -d --build`
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    environment:
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET (>= 32 chars) in .env}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      NVD_API_KEY: ${NVD_API_KEY:-}
+      DATABASE_URL: postgres://vulnstack:vulnstack@postgres:5432/vulnstack
+      REDIS_URL: redis://redis:6379
+      VULNSTACK_MAX_UPLOAD_MB: ${VULNSTACK_MAX_UPLOAD_MB:-10}
+      VULNSTACK_MAX_FILES: ${VULNSTACK_MAX_FILES:-200}
+      VULNSTACK_SCANS_PER_MINUTE: ${VULNSTACK_SCANS_PER_MINUTE:-10}
+      VULNSTACK_SCAN_TIMEOUT_MS: ${VULNSTACK_SCAN_TIMEOUT_MS:-55000}
+      VULNSTACK_TRUST_PROXY: ${VULNSTACK_TRUST_PROXY:-0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vulnstack
+      POSTGRES_PASSWORD: vulnstack
+      POSTGRES_DB: vulnstack
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vulnstack -d vulnstack']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:

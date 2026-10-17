@@ -1,0 +1,65 @@
+name: VulnStack scan
+description: Scan project dependencies for known vulnerabilities (CVE / GHSA) and upload SARIF to code scanning
+author: VulnStack contributors
+branding:
+  icon: shield
+  color: blue
+inputs:
+  path:
+    description: Path to scan
+    default: '.'
+  fail-on:
+    description: Fail when a vulnerability at or above this severity is found (low, medium, high, critical), or `any` to fail on any finding
+    default: high
+  format:
+    description: Output format
+    default: sarif
+  output:
+    description: Output file
+    default: vulnstack.sarif
+  version:
+    description: npm version or dist-tag of the vulnstack CLI
+    default: latest
+  github-token:
+    description: Optional GitHub token (no scopes needed) that enables GHSA lookups
+    required: false
+    default: ''
+  nvd-api-key:
+    description: Optional NVD API key for CVSS enrichment
+    required: false
+    default: ''
+  upload-sarif:
+    description: Upload the SARIF file to GitHub code scanning (requires security-events write)
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Run vulnstack
+      id: scan
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        NVD_API_KEY: ${{ inputs.nvd-api-key }}
+        VS_PATH: ${{ inputs.path }}
+        VS_FAIL_ON: ${{ inputs.fail-on }}
+        VS_FORMAT: ${{ inputs.format }}
+        VS_OUTPUT: ${{ inputs.output }}
+        VS_VERSION: ${{ inputs.version }}
+      run: |
+        set +e
+        npx --yes "vulnstack@${VS_VERSION}" scan "$VS_PATH" --format "$VS_FORMAT" --output "$VS_OUTPUT" --fail-on "$VS_FAIL_ON"
+        echo "code=$?" >> "$GITHUB_OUTPUT"
+    - uses: github/codeql-action/upload-sarif@v3
+      if: always() && inputs.upload-sarif == 'true' && inputs.format == 'sarif' && hashFiles(inputs.output) != ''
+      with:
+        sarif_file: ${{ inputs.output }}
+        category: vulnstack
+    - name: Enforce result
+      if: steps.scan.outputs.code != '0'
+      shell: bash
+      env:
+        CODE: ${{ steps.scan.outputs.code }}
+      run: exit "$CODE"

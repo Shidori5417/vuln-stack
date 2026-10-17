@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import type * as React from 'react';
 import { SiteHeader } from '@/components/site-header';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ThemeScript } from '@/components/theme-script';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -20,6 +21,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className="min-h-dvh">
         <ThemeProvider>
           <SiteHeader />

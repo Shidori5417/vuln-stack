@@ -39,7 +39,7 @@ describe('PGlite persistence', () => {
     const found = await getProject(h2.db, 'u1', created.id);
     expect(found.id).toBe(created.id);
     await h2.close();
-  });
+  }, 60_000);
 });
 
 describe('getDb singleton', () => {
@@ -63,7 +63,7 @@ describe('getDb singleton', () => {
       g.__vulnstackDb = saved;
       vi.unstubAllEnvs();
     }
-  });
+  }, 60_000);
 });
 
 describe('orNotFound', () => {

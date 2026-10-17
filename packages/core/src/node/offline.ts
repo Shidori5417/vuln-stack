@@ -3,7 +3,10 @@ import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { once } from 'node:events';
-import { inflateRawSync } from 'node:zlib';
+import { gunzipSync, inflateRawSync } from 'node:zlib';
+import { parseEpssCsv, type EpssEntry } from '../advisories/epss.js';
+import type { ExploitSource } from '../advisories/exploit.js';
+import { KEV_MIRROR_URL, parseKev, type KevEntry } from '../advisories/kev.js';
 import type { OsvRecord } from '../advisories/osv.js';
 import { ECOSYSTEMS, type Ecosystem, type Warning } from '../model/types.js';
 import type { FetchFn } from '../net/context.js';
@@ -276,4 +279,173 @@ export async function loadOfflineDatabase(
     }
   }
   return { database: new OfflineDatabase(indexes), missing };
+}
+
+// ---------------------------------------------------------------------------
+// CISA KEV + FIRST EPSS for offline scans
+// ---------------------------------------------------------------------------
+
+export const KEV_DUMP_URL =
+  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+export const EPSS_DUMP_URL = 'https://epss.empiricalsecurity.com/epss_scores-current.csv.gz';
+/** KEV is ~1 MB and the EPSS csv.gz ~5 MB; these limits are generous, not tight. */
+export const MAX_KEV_BYTES = 64 * 1024 ** 2;
+export const MAX_EPSS_BYTES = 256 * 1024 ** 2;
+/** Upper bound for the decompressed EPSS csv (guards against gzip bombs). */
+export const MAX_EPSS_TEXT_BYTES = 1024 ** 3;
+
+export interface ExploitMetaEntry {
+  builtAt: string;
+  records: number;
+  bytes: number;
+  etag?: string;
+  lastModified?: string;
+}
+export interface ExploitMeta {
+  kev?: ExploitMetaEntry;
+  epss?: ExploitMetaEntry;
+}
+
+export interface UpdateExploitOptions {
+  dir?: string;
+  fetch?: FetchFn;
+  kevUrl?: string;
+  epssUrl?: string;
+  maxKevBytes?: number;
+  maxEpssBytes?: number;
+  now?: () => Date;
+  onProgress?: (message: string) => void;
+}
+
+export interface UpdateExploitResult {
+  dir: string;
+  updated: ExploitMeta;
+  unchanged: ('kev' | 'epss')[];
+}
+
+const exploitMetaPath = (dir: string) => join(dir, 'exploit-meta.json');
+
+export async function readExploitMeta(dir: string = defaultOfflineDir()): Promise<ExploitMeta> {
+  try {
+    return JSON.parse(await readFile(exploitMetaPath(dir), 'utf8')) as ExploitMeta;
+  } catch {
+    return {};
+  }
+}
+
+async function writeAtomic(path: string, data: string | Uint8Array) {
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile(tmp, data);
+  await rename(tmp, path);
+}
+
+/** Decompresses and parses an EPSS csv.gz. */
+export function parseEpssGzip(data: Uint8Array): Map<string, EpssEntry> {
+  const text = gunzipSync(data, { maxOutputLength: MAX_EPSS_TEXT_BYTES }).toString('utf8');
+  return parseEpssCsv(text);
+}
+
+/** Downloads KEV (`kev.json`) and EPSS (`epss.csv.gz`) into the offline directory. */
+export async function updateExploitData(
+  options: UpdateExploitOptions = {},
+): Promise<UpdateExploitResult> {
+  const dir = options.dir ?? defaultOfflineDir();
+  const fetchFn = options.fetch ?? ((url, init) => globalThis.fetch(url, init));
+  const say = options.onProgress;
+  await mkdir(dir, { recursive: true });
+  const meta = await readExploitMeta(dir);
+  const result: UpdateExploitResult = { dir, updated: {}, unchanged: [] };
+
+  const sets = [
+    {
+      name: 'kev' as const,
+      file: 'kev.json',
+      url: options.kevUrl ?? KEV_DUMP_URL,
+      max: options.maxKevBytes ?? MAX_KEV_BYTES,
+      count: (data: Uint8Array) => parseKev(JSON.parse(Buffer.from(data).toString('utf8'))).size,
+    },
+    {
+      name: 'epss' as const,
+      file: 'epss.csv.gz',
+      url: options.epssUrl ?? EPSS_DUMP_URL,
+      max: options.maxEpssBytes ?? MAX_EPSS_BYTES,
+      count: (data: Uint8Array) => parseEpssGzip(data).size,
+    },
+  ];
+  for (const set of sets) {
+    const previous = meta[set.name];
+    const hasFile = await stat(join(dir, set.file)).then(
+      () => true,
+      () => false,
+    );
+    const headers: Record<string, string> = {};
+    if (previous?.etag && hasFile) headers['If-None-Match'] = previous.etag;
+    say?.(`${set.name}: downloading`);
+    const urls = set.name === 'kev' && !options.kevUrl ? [set.url, KEV_MIRROR_URL] : [set.url];
+    let got: Awaited<ReturnType<typeof download>> | undefined;
+    let lastError: unknown;
+    for (const url of urls) {
+      try {
+        got = await download(fetchFn, url, set.max, headers, (m) => say?.(`${set.name}: ${m}`));
+        break;
+      } catch (e) {
+        lastError = e;
+        say?.(`${set.name}: ${url} failed, trying next source`);
+      }
+    }
+    if (!got) throw lastError;
+    if (got === 'not-modified') {
+      result.unchanged.push(set.name);
+      say?.(`${set.name}: up to date`);
+      continue;
+    }
+    // Validate before replacing the previous good file.
+    const records = set.count(got.data);
+    if (records === 0) throw new Error(`${set.url} contained no records`);
+    await writeAtomic(join(dir, set.file), got.data);
+    const entry: ExploitMetaEntry = {
+      builtAt: (options.now?.() ?? new Date()).toISOString(),
+      records,
+      bytes: got.data.byteLength,
+      ...(got.etag ? { etag: got.etag } : {}),
+      ...(got.lastModified ? { lastModified: got.lastModified } : {}),
+    };
+    meta[set.name] = entry;
+    result.updated[set.name] = entry;
+    await writeAtomic(exploitMetaPath(dir), JSON.stringify(meta, null, 2));
+    say?.(`${set.name}: ${records} records`);
+  }
+  return result;
+}
+
+/** Reads KEV / EPSS from the offline directory; a missing file becomes a warning, not an error. */
+export async function loadExploitData(
+  dir: string = defaultOfflineDir(),
+): Promise<ExploitSource & { warnings: Warning[]; builtAt: Record<string, string> }> {
+  const warnings: Warning[] = [];
+  const builtAt: Record<string, string> = {};
+  const meta = await readExploitMeta(dir);
+  const missing = (what: string) =>
+    warnings.push({
+      code: 'offline-missing-exploit-data',
+      message: `No offline ${what} data; run "vulnstack db update" to fetch it.`,
+    });
+
+  let kev = new Map<string, KevEntry>();
+  try {
+    kev = parseKev(JSON.parse(await readFile(join(dir, 'kev.json'), 'utf8')));
+    if (meta.kev) builtAt.kev = meta.kev.builtAt;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    missing('CISA KEV');
+  }
+  let epss = new Map<string, EpssEntry>();
+  try {
+    epss = parseEpssGzip(await readFile(join(dir, 'epss.csv.gz')));
+    if (meta.epss) builtAt.epss = meta.epss.builtAt;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    missing('EPSS');
+  }
+  return { kev, epss, warnings, builtAt };
 }

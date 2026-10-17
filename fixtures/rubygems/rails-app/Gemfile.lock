@@ -1,0 +1,41 @@
+GIT
+  remote: https://github.com/acme/forked-gem.git
+  revision: 0123456789abcdef0123456789abcdef01234567
+  specs:
+    forked-gem (0.3.0)
+      rack (>= 2.0)
+
+PATH
+  remote: vendor/internal_lib
+  specs:
+    internal_lib (1.0.0)
+      nokogiri (>= 1.10)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    actionpack (5.2.2)
+      rack (~> 2.0)
+      rack-test (>= 0.6.3)
+    mini_portile2 (2.4.0)
+    nokogiri (1.10.3)
+      mini_portile2 (~> 2.4.0)
+    nokogiri (1.10.3-x86_64-linux)
+    rack (2.0.1)
+    rack-test (1.1.0)
+      rack (>= 1.0, < 3)
+    rails (5.2.2)
+      actionpack (= 5.2.2)
+
+PLATFORMS
+  ruby
+  x86_64-linux
+
+DEPENDENCIES
+  forked-gem!
+  internal_lib!
+  nokogiri (~> 1.10)
+  rails (~> 5.2.2)
+
+BUNDLED WITH
+   2.1.4

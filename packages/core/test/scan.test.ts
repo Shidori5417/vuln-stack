@@ -54,6 +54,8 @@ describe('scanFiles', () => {
     const phases: string[] = [];
     const result = await scanFiles(new FsFileProvider(join(FIXTURES, 'npm/lock-v3-express')), {
       fetch,
+      kev: false,
+      epss: false,
       onProgress: (p) => phases.push(p),
     });
 
@@ -152,7 +154,11 @@ describe('scanFiles', () => {
 describe('scanManual', () => {
   it('scans free text and reports unparseable entries', async () => {
     const { fetch } = expressOsv();
-    const result = await scanManual('express@4.17.1, what is this', { fetch });
+    const result = await scanManual('express@4.17.1, what is this', {
+      fetch,
+      kev: false,
+      epss: false,
+    });
     expect(result.findings.map((f) => f.chain)).toEqual([['manual', 'express']]);
     expect(result.warnings.map((w) => w.code)).toEqual(['manual-parse-error']);
   });

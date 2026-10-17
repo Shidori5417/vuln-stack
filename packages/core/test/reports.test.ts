@@ -52,7 +52,11 @@ async function sampleScan(): Promise<ScanResult> {
       { ...ghsa('GHSA-lo2', 'lodash', {}, { label: 'MODERATE' }), details: 'Long text' },
     ],
   });
-  return scanFiles(new FsFileProvider(join(FIXTURES, 'npm/lock-v3-express')), { fetch });
+  return scanFiles(new FsFileProvider(join(FIXTURES, 'npm/lock-v3-express')), {
+    fetch,
+    kev: false,
+    epss: false,
+  });
 }
 
 describe('ignore rules', () => {
@@ -198,9 +202,10 @@ describe('SARIF report', () => {
       affected: { 'npm:minimist@0.0.8': ['GHSA-mini'] },
       records: [ghsa('GHSA-mini', 'minimist', { fixed: '1.2.6' }, { cve: 'CVE-2021-44906' })],
     });
-    const scan = applyIgnores(await scanManual('minimist@0.0.8, ???', { fetch }), [
-      { id: 'CVE-2021-44906', source: '--ignore' },
-    ]);
+    const scan = applyIgnores(
+      await scanManual('minimist@0.0.8, ???', { fetch, kev: false, epss: false }),
+      [{ id: 'CVE-2021-44906', source: '--ignore' }],
+    );
     scan.warnings.push({ code: 'x', message: 'with file', file: 'package.json' });
     const sarif = toSarif(scan);
     expect(validate(sarif), JSON.stringify(validate.errors, null, 2)).toBe(true);

@@ -380,6 +380,8 @@ describe('scan with GHSA and NVD', () => {
       fetch,
       ghsa: { token: 'bad' },
       nvd: { clock: fakeClock() },
+      kev: false,
+      epss: false,
     });
     expect(result.findings).toHaveLength(1);
     expect(result.warnings.map((w) => w.code).sort()).toEqual(['ghsa-failed', 'nvd-failed']);

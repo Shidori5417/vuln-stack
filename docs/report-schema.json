@@ -108,7 +108,21 @@
     }
   },
   "$defs": {
-    "ecosystem": { "enum": ["npm", "PyPI", "Packagist", "Maven", "Go", "NuGet"] },
+    "ecosystem": {
+      "enum": [
+        "npm",
+        "PyPI",
+        "Packagist",
+        "Maven",
+        "Go",
+        "NuGet",
+        "RubyGems",
+        "crates.io",
+        "Hex",
+        "Pub",
+        "SwiftURL"
+      ]
+    },
     "severity": { "enum": ["critical", "high", "medium", "low", "unknown"] },
     "warning": {
       "type": "object",
@@ -191,7 +205,20 @@
             }
           }
         },
-        "cwes": { "type": "array", "items": { "type": "string" } }
+        "cwes": { "type": "array", "items": { "type": "string" } },
+        "exploit": {
+          "type": "object",
+          "description": "CISA KEV / FIRST EPSS signals; absent when exploit enrichment did not run",
+          "required": ["kev"],
+          "properties": {
+            "kev": { "type": "boolean" },
+            "kevDateAdded": { "type": "string" },
+            "kevDueDate": { "type": "string" },
+            "kevRansomware": { "type": "boolean" },
+            "epss": { "type": "number", "minimum": 0, "maximum": 1 },
+            "epssPercentile": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
       }
     },
     "finding": {

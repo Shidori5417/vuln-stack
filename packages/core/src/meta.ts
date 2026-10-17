@@ -8,3 +8,4 @@ export { matchesAny, matchesName } from './sources/match.js';
 export { guessEcosystem, parseManualInput, type ManualEntry } from './sources/manual.js';
 export { advisoryUrl } from './advisories/urls.js';
 export { VERSION } from './version.js';
+export { exploitRank, formatEpss, isKnownExploited } from './model/exploit.js';

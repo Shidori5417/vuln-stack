@@ -22,15 +22,15 @@
 
 ### Finding
 
-| Field           | Description                                                                                                                                          |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fingerprint`   | Stable identity of a finding across scans (below)                                                                                                    |
-| `subproject`    | Folder of the sub-project                                                                                                                            |
-| `dependency`    | `ecosystem`, `name`, `version`, `isDirect`, `sourceFile`, `confidence`, optional `declaredRange` and `scope`                                         |
-| `chain`         | Shortest path from the project, e.g. `["my-app", "express", "body-parser"]`                                                                          |
-| `pathCount`     | Number of distinct paths that pull the dependency in (capped)                                                                                        |
-| `vulnerability` | `id` (CVE preferred, then GHSA, then others), `aliases`, `summary`, `details`, `severity`, `cvss`, dates, `references`, OSV-style `affected`, `cwes` |
-| `remediation`   | `type` and, when known, `fixedVersion`                                                                                                               |
+| Field           | Description                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fingerprint`   | Stable identity of a finding across scans (below)                                                                                                                        |
+| `subproject`    | Folder of the sub-project                                                                                                                                                |
+| `dependency`    | `ecosystem`, `name`, `version`, `isDirect`, `sourceFile`, `confidence`, optional `declaredRange` and `scope`                                                             |
+| `chain`         | Shortest path from the project, e.g. `["my-app", "express", "body-parser"]`                                                                                              |
+| `pathCount`     | Number of distinct paths that pull the dependency in (capped)                                                                                                            |
+| `vulnerability` | `id` (CVE preferred, then GHSA, then others), `aliases`, `summary`, `details`, `severity`, `cvss`, dates, `references`, OSV-style `affected`, `cwes`, optional `exploit` |
+| `remediation`   | `type` and, when known, `fixedVersion`                                                                                                                                   |
 
 ### Fingerprint semantics
 
@@ -56,6 +56,10 @@ Manifest-only scans also produce a `no-lockfile` warning.
 | `breaking-update`  | The lowest fix requires a major (breaking) upgrade, per the ecosystem's versioning rules  |
 | `no-fix`           | No fixed version is known                                                                 |
 
+### Exploit data (KEV and EPSS)
+
+`vulnerability.exploit` is optional and additive (`schemaVersion` stays 1). It is set for vulnerabilities that have a CVE alias when enrichment ran: `kev` (listed in CISA's Known Exploited Vulnerabilities catalog; `false` also when KEV was not checked), `kevDateAdded`, `kevDueDate`, `kevRansomware`, and `epss` / `epssPercentile` (FIRST EPSS, 0 to 1). Failures are reported as warnings (`kev-failed`, `epss-failed`, `epss-partial`); the scan continues.
+
 ### CVSS and severity
 
 `vulnerability.cvss` has `score`, `vector`, `version` (3.0, 3.1 or 4.0) and `source`. When several sources score the same issue the precedence is **NVD > GHSA > OSV**. `severity` is derived from the score (or from the advisory when no score exists); `unknown` is used when neither is available.
@@ -68,16 +72,17 @@ Manifest-only scans also produce a `no-lockfile` warning.
 
 `vulnstack scan -f sarif -o vulnstack.sarif` writes SARIF 2.1.0, accepted by GitHub Code Scanning (`github/codeql-action/upload-sarif`).
 
-| SARIF element                  | Content                                                                                                                                 |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `tool.driver.rules[]`          | One rule per distinct vulnerability id, with summary, details, help (Markdown), `helpUri` and aliases                                   |
-| `properties.security-severity` | CVSS score as a string with one decimal; without a score a severity fallback (critical 9.5, high 8.0, medium 5.5, low 2.0, unknown 5.0) |
-| `level`                        | `critical`, `high` map to `error`; `medium` and `unknown` to `warning`; `low` to `note`                                                 |
-| `results[]`                    | One result per finding with `ruleId`, a message that includes the chain and the fix, and the dependency file as location (line 1)       |
-| `partialFingerprints`          | `vulnstackFinding` = the finding `fingerprint`                                                                                          |
-| `result.properties`            | `ecosystem`, `package`, `version`, `direct`, `chain`, `fixType`, `fixedVersion`, `confidence`                                           |
-| `suppressions`                 | Ignored findings are included as results with an `external` / `accepted` suppression whose justification is the rule's reason           |
-| `invocations`                  | Scan start time and warnings as tool execution notifications                                                                            |
+| SARIF element                       | Content                                                                                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `tool.driver.rules[]`               | One rule per distinct vulnerability id, with summary, details, help (Markdown), `helpUri` and aliases                                   |
+| `properties.kev`, `properties.epss` | Exploit data when present; KEV rules also get the tag `known-exploited` (the score is not changed)                                      |
+| `properties.security-severity`      | CVSS score as a string with one decimal; without a score a severity fallback (critical 9.5, high 8.0, medium 5.5, low 2.0, unknown 5.0) |
+| `level`                             | `critical`, `high` map to `error`; `medium` and `unknown` to `warning`; `low` to `note`                                                 |
+| `results[]`                         | One result per finding with `ruleId`, a message that includes the chain and the fix, and the dependency file as location (line 1)       |
+| `partialFingerprints`               | `vulnstackFinding` = the finding `fingerprint`                                                                                          |
+| `result.properties`                 | `ecosystem`, `package`, `version`, `direct`, `chain`, `fixType`, `fixedVersion`, `confidence`                                           |
+| `suppressions`                      | Ignored findings are included as results with an `external` / `accepted` suppression whose justification is the rule's reason           |
+| `invocations`                       | Scan start time and warnings as tool execution notifications                                                                            |
 
 ## PDF
 

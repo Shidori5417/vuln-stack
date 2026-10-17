@@ -1,5 +1,16 @@
 /** Ecosystem identifiers, using the exact names OSV.dev expects. */
-export type Ecosystem = 'npm' | 'PyPI' | 'Packagist' | 'Maven' | 'Go' | 'NuGet';
+export type Ecosystem =
+  | 'npm'
+  | 'PyPI'
+  | 'Packagist'
+  | 'Maven'
+  | 'Go'
+  | 'NuGet'
+  | 'RubyGems'
+  | 'crates.io'
+  | 'Hex'
+  | 'Pub'
+  | 'SwiftURL';
 
 export const ECOSYSTEMS: readonly Ecosystem[] = [
   'npm',
@@ -8,6 +19,11 @@ export const ECOSYSTEMS: readonly Ecosystem[] = [
   'Maven',
   'Go',
   'NuGet',
+  'RubyGems',
+  'crates.io',
+  'Hex',
+  'Pub',
+  'SwiftURL',
 ];
 
 /**
@@ -94,6 +110,19 @@ export interface Reference {
   url: string;
 }
 
+/** Exploitation signals from CISA KEV and FIRST EPSS (both keyed by CVE id). */
+export interface ExploitInfo {
+  /** Listed in CISA's Known Exploited Vulnerabilities catalog. `false` also when KEV was not checked. */
+  kev: boolean;
+  kevDateAdded?: string;
+  kevDueDate?: string;
+  kevRansomware?: boolean;
+  /** EPSS probability of exploitation in the next 30 days, 0..1. */
+  epss?: number;
+  /** EPSS percentile, 0..1. */
+  epssPercentile?: number;
+}
+
 /** A vulnerability after merging every record that refers to it (CVE, GHSA, …). */
 export interface Vulnerability {
   /** Preferred id: CVE first, then GHSA, then anything else. */
@@ -109,6 +138,7 @@ export interface Vulnerability {
   references: Reference[];
   affected: AffectedPackage[];
   cwes: string[];
+  exploit?: ExploitInfo;
 }
 
 export type FixType = 'safe-patch' | 'breaking-update' | 'no-fix';

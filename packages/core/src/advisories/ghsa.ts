@@ -15,6 +15,11 @@ const ECOSYSTEM_ENUM: Record<Ecosystem, string> = {
   Maven: 'MAVEN',
   Go: 'GO',
   NuGet: 'NUGET',
+  RubyGems: 'RUBYGEMS',
+  'crates.io': 'RUST',
+  Hex: 'ERLANG',
+  Pub: 'PUB',
+  SwiftURL: 'SWIFT',
 };
 
 interface GhsaNode {

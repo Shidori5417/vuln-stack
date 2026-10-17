@@ -52,11 +52,18 @@ function rule(v: Vulnerability): ReportingDescriptor {
         'security',
         'vulnerability',
         'dependency',
+        ...(v.exploit?.kev ? ['known-exploited'] : []),
         ...v.cwes.map((c) => `external/cwe/${c.toLowerCase()}`),
       ],
       precision: 'very-high',
       ...(v.cvss ? { cvssVector: v.cvss.vector } : {}),
       aliases: v.aliases,
+      ...(v.exploit
+        ? {
+            kev: v.exploit.kev,
+            ...(v.exploit.epss !== undefined ? { epss: v.exploit.epss } : {}),
+          }
+        : {}),
     },
   };
 }

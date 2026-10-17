@@ -2,6 +2,7 @@ import pLimit from 'p-limit';
 import { mergeRecords } from './advisories/merge.js';
 import { severityFromScore } from './advisories/cvss.js';
 import { GhsaClient, ghsaCacheKey } from './advisories/ghsa.js';
+import { enrichExploit, enrichExploitOffline, type ExploitSource } from './advisories/exploit.js';
 import { NvdClient, type NvdOptions } from './advisories/nvd.js';
 import {
   OsvClient,
@@ -55,11 +56,17 @@ export interface ScanOptions {
     warnings?(): Warning[];
     /** Build time per ecosystem, shown in the offline-mode warning. */
     builtAt?: Record<string, string>;
+    /** Local KEV / EPSS data (see `loadExploitData` in `@vulnstack/core/node`). */
+    exploit?: ExploitSource;
   };
   /** Also query the GitHub Advisory Database (needs a GitHub token, no scopes). */
   ghsa?: { token: string; endpoint?: string };
   /** Enrich CVSS scores from NVD. Without an API key only ~5 CVEs per 30 s are fetched. */
   nvd?: NvdOptions;
+  /** Mark CVEs in CISA's Known Exploited Vulnerabilities catalog (default true; offline: needs `offline.exploit`). */
+  kev?: boolean;
+  /** Add FIRST EPSS exploit-probability scores (default true; offline: needs `offline.exploit`). */
+  epss?: boolean;
   onProgress?: (phase: ScanPhase, detail?: string) => void;
 }
 
@@ -340,6 +347,13 @@ export async function scanSubprojects(
   if (options.nvd && !offline) {
     options.onProgress?.('enrich');
     await enrichFromNvd([...vulnsByDep.values()].flat(), options.nvd, net, warnings);
+  }
+
+  const toggles = { kev: options.kev !== false, epss: options.epss !== false };
+  if (toggles.kev || toggles.epss) {
+    const all = [...vulnsByDep.values()].flat();
+    if (!offline) await enrichExploit(all, toggles, net, warnings);
+    else if (offline.exploit) enrichExploitOffline(all, offline.exploit, toggles, warnings);
   }
 
   const findings: Finding[] = [];

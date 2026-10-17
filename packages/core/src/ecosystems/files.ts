@@ -33,6 +33,14 @@ export const SUPPORTED_FILES: Record<
     manifest: ['*.csproj', '*.fsproj', '*.vbproj'],
     context: ['Directory.Packages.props'],
   },
+  RubyGems: { lock: ['Gemfile.lock'], manifest: [], context: [] },
+  // Cargo.toml is the low-confidence fallback; with a Cargo.lock it only marks dev dependencies.
+  'crates.io': { lock: ['Cargo.lock'], manifest: ['Cargo.toml'], context: [] },
+  // mix.exs (read when present) tells direct from transitive and dev-only dependencies.
+  Hex: { lock: ['mix.lock'], manifest: [], context: ['mix.exs'] },
+  Pub: { lock: ['pubspec.lock'], manifest: [], context: [] },
+  // Package.swift (read when present) tells direct from transitive pins.
+  SwiftURL: { lock: ['Package.resolved'], manifest: [], context: ['Package.swift'] },
 };
 
 /** Every file name (or `*` pattern) worth uploading, across ecosystems. */

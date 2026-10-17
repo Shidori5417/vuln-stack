@@ -92,12 +92,12 @@ Use new descriptive kebab-case codes for other cases. Throw only for unreadable 
 - `isCoveredByLock(lockDir, memberDir, provider)`: return `true` when a manifest-only folder is a workspace member already covered by an ancestor's lock file, so it is not reported as lock-less.
 - `normalizeName(name)`: canonical package name for advisory matching (PEP 503 for PyPI, lower-case for Packagist). Defaults to the name as written.
 
-## Worked example (hypothetical, not implemented)
+## Worked example (simplified)
 
-A skeleton for a `Cargo` plugin that reads `Cargo.lock` (TOML). **This is an illustration only; VulnStack does not ship it.** It uses `crates.io`, the name OSV uses.
+A skeleton for a `Cargo` plugin (the shipped one in `ecosystems/cargo/` is fuller) that reads `Cargo.lock` (TOML). It uses `crates.io`, the name OSV uses.
 
 ```ts
-// packages/core/src/ecosystems/cargo/index.ts (EXAMPLE ONLY)
+// packages/core/src/ecosystems/cargo/index.ts (simplified)
 import { addEdge, addNode, createGraph, ROOT_ID } from '../../model/graph.js';
 import type { Warning } from '../../model/types.js';
 import { basename, joinPath } from '../../sources/file-provider.js';

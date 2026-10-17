@@ -13,7 +13,7 @@ VulnStack is an open-source (MIT) CLI and web app. It reads your lock files, ask
 
 ## Features
 
-- **Six ecosystems:** npm, PyPI, Packagist (Composer), Maven (incl. Gradle), Go, NuGet. Monorepos are scanned per sub-folder.
+- **Eleven ecosystems:** npm, PyPI, Packagist (Composer), Maven (incl. Gradle), Go, NuGet, RubyGems (Bundler), crates.io (Cargo), Hex (Mix), Pub (Dart/Flutter), SwiftURL (SwiftPM). Monorepos are scanned per sub-folder.
 - **Lock-file first.** Lock files pin exact versions and list transitive dependencies. Without one, manifest ranges are resolved against the package registry and the result is flagged as _estimated_ (confidence `medium`).
 - **Transitive chains.** Every finding shows the shortest path, e.g. `my-app > express > body-parser`.
 - **Safe patch vs breaking update.** The lowest fixed version is classified as a safe patch, a breaking (major) update, or no fix available.
@@ -35,8 +35,13 @@ VulnStack is an open-source (MIT) CLI and web app. It reads your lock files, ask
 | Maven (+ Gradle) | `gradle.lockfile`                                                         | `pom.xml`, `build.gradle`, `build.gradle.kts` | `libs.versions.toml`       |
 | Go               | `go.mod` (pins the whole module graph, Go 1.17+)                          |                                               |                            |
 | NuGet            | `packages.lock.json`, `packages.config`                                   | `*.csproj`, `*.fsproj`, `*.vbproj`            | `Directory.Packages.props` |
+| RubyGems         | `Gemfile.lock`                                                            |                                               |                            |
+| crates.io        | `Cargo.lock`                                                              | `Cargo.toml`                                  |                            |
+| Hex              | `mix.lock`                                                                |                                               | `mix.exs`                  |
+| Pub              | `pubspec.lock`                                                            |                                               |                            |
+| SwiftURL         | `Package.resolved` (v1, v2, v3)                                           |                                               | `Package.swift`            |
 
-When a lock file is present, manifests next to it are only used as context (for example to mark direct dependencies).
+When a lock file is present, manifests next to it are only used as context (for example to mark direct dependencies). Gemfile.lock, mix.lock, pubspec.lock and Package.resolved carry limited graph data: Pub and Swift pins have no dependency edges, and only Cargo (via `Cargo.toml`) and Hex (via `mix.exs`) can mark dev-only dependencies.
 
 ## Quick start
 
@@ -103,20 +108,46 @@ vulnstack db status [--dir <path>]
 vulnstack scan --offline [--offline-dir <path>]
 ```
 
-- `db update` downloads the OSV dump of each ecosystem and builds a local index. Default: all six (npm, PyPI, Packagist, Maven, Go, NuGet). `--ecosystem` is case-insensitive and accepts several values, space or comma separated (`--ecosystem npm go` or `--ecosystem npm,Go`). Requests send `If-None-Match` with the stored ETag, so unchanged dumps are not downloaded again.
+- `db update` downloads the OSV dump of each ecosystem and builds a local index. Default: all eleven (npm, PyPI, Packagist, Maven, Go, NuGet, RubyGems, crates.io, Hex, Pub, SwiftURL). `--ecosystem` is case-insensitive and accepts several values, space or comma separated (`--ecosystem npm go` or `--ecosystem npm,Go`). Requests send `If-None-Match` with the stored ETag, so unchanged dumps are not downloaded again.
 - `db status` lists the built time, record count and size per ecosystem and warns when the data is older than 7 days.
 - `scan --offline` answers from the local database: no OSV, GHSA or NVD calls and no registry range resolution. Manifest ranges that are not pinned by a lock file are therefore not scanned, so lock files are needed for full coverage. It cannot be combined with `--url`.
 - An ecosystem's index is read only when the scan queries it. If a queried ecosystem was never downloaded, a warning names it (once) and suggests `vulnstack db update --ecosystem <eco>`.
 - Default folder: `$XDG_CACHE_HOME/vulnstack/offline` (`~/.cache/vulnstack/offline` when `XDG_CACHE_HOME` is unset). Override with `--dir` / `--offline-dir`.
 - Size: the npm dump is large (a download of hundreds of MB) and indexing it needs about 1 GB of memory.
 
+### Global install and direct commands
+
+The package installs two bin names for the same file: `vulnstack` and `vulnscan`. Help text follows the name you invoked.
+
+```sh
+# From a checkout of the repository
+pnpm build && cd apps/cli && pnpm link --global     # or from the root: pnpm cli:link
+
+# With npm
+cd apps/cli && npm link
+
+# Once published
+npx vulnstack scan
+```
+
+`pnpm link --global` needs pnpm's global bin directory on your `PATH`. Run `pnpm setup` once (it creates `~/.local/share/pnpm` on Linux and adds it to your shell profile), then open a new shell. Check with `which vulnscan`.
+
+### Known exploited vulnerabilities (KEV) and EPSS
+
+Online scans mark CVEs in CISA's Known Exploited Vulnerabilities catalog and add FIRST EPSS scores. The table gets an `Exploit` column (`KEV`, `ransomware`, `EPSS 12%`), KEV findings sort first inside each severity, and the summary ends with `N known exploited, highest EPSS x%`. JSON, SARIF and PDF reports carry the data from the core library.
+
+- `--no-kev`, `--no-epss` turn the lookups off.
+- `--kev-only` shows only known-exploited findings; `--min-epss <0-1|percent>` (`0.3`, `30`, `30%`) hides findings below that EPSS.
+- `--fail-on-kev` exits 1 when a known-exploited finding remains after ignore rules (display filters do not hide it from this check).
+- `--offline` reads the local copies; `vulnstack db update` downloads them (skip with `--no-exploit`) and `vulnstack db status` shows their age (stale after 3 days).
+
 ### Exit codes
 
-| Code | Meaning                                                                               |
-| ---- | ------------------------------------------------------------------------------------- |
-| `0`  | Scan finished; no `--fail-on` threshold was hit                                       |
-| `1`  | `--fail-on` threshold reached by at least one finding (ignored findings do not count) |
-| `2`  | Error: bad arguments, unreadable input, network failure, or `--upload` failed         |
+| Code | Meaning                                                                                                  |
+| ---- | -------------------------------------------------------------------------------------------------------- |
+| `0`  | Scan finished; no `--fail-on` threshold was hit                                                          |
+| `1`  | `--fail-on` threshold or `--fail-on-kev` reached by at least one finding (ignored findings do not count) |
+| `2`  | Error: bad arguments, unreadable input, network failure, or `--upload` failed                            |
 
 ### Environment variables
 

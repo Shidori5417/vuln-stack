@@ -1,3 +1,4 @@
+import { formatEpss } from '../../model/exploit.js';
 import {
   SEVERITY_ORDER,
   type Finding,
@@ -60,6 +61,12 @@ const COLUMNS: Column[] = [
         },
         ...(f.vulnerability.cvss
           ? [{ text: `CVSS ${f.vulnerability.cvss.score.toFixed(1)}`, color: MUTED }]
+          : []),
+        ...(f.vulnerability.exploit?.kev
+          ? [{ text: 'Known exploited', font: 'bold' as const, color: SEVERITY_COLORS.critical.fg }]
+          : []),
+        ...(formatEpss(f.vulnerability.exploit?.epss)
+          ? [{ text: `EPSS ${formatEpss(f.vulnerability.exploit?.epss)}`, color: MUTED }]
           : []),
       ],
     }),

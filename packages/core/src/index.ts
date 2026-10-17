@@ -1,4 +1,5 @@
 export * from './model/types.js';
+export { exploitRank, formatEpss, isKnownExploited } from './model/exploit.js';
 export {
   ROOT_ID,
   addEdge,
@@ -74,6 +75,29 @@ export {
 } from './advisories/osv.js';
 export { GhsaClient, ghsaRangeToEvents } from './advisories/ghsa.js';
 export { NvdClient, type NvdOptions } from './advisories/nvd.js';
+export {
+  KEV_MIRROR_URL,
+  KEV_URL,
+  loadKev,
+  parseKev,
+  type KevEntry,
+  type KevOptions,
+} from './advisories/kev.js';
+export {
+  EPSS_API,
+  lookupEpss,
+  parseEpssCsv,
+  parseEpssResponse,
+  type EpssEntry,
+  type EpssOptions,
+  type EpssResult,
+} from './advisories/epss.js';
+export {
+  enrichExploit,
+  enrichExploitOffline,
+  type ExploitSource,
+  type ExploitToggles,
+} from './advisories/exploit.js';
 export { advisoryUrl, canonicalId, mergeRecords } from './advisories/merge.js';
 export { parseCvss, severityFromLabel, severityFromScore } from './advisories/cvss.js';
 export { computeRemediation, evaluateRange, recordAffects } from './remediation.js';

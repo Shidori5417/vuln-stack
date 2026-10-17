@@ -119,6 +119,7 @@ export async function saveScan(
           severity: f.vulnerability.severity,
           cvssScore: f.vulnerability.cvss?.score ?? null,
           cvss: f.vulnerability.cvss ?? null,
+          exploit: f.vulnerability.exploit ?? null,
           fixType: f.remediation.type,
           fixedVersion: f.remediation.fixedVersion ?? null,
         })),
@@ -193,6 +194,7 @@ export function toFinding(row: FindingRow): Finding {
   };
   if (v.details) vulnerability.details = v.details;
   if (row.cvss) vulnerability.cvss = row.cvss;
+  if (row.exploit) vulnerability.exploit = row.exploit;
   if (v.published) vulnerability.published = v.published;
   if (v.modified) vulnerability.modified = v.modified;
   const type = row.fixType as Finding['remediation']['type'];

@@ -219,3 +219,25 @@ describe('compareScans', () => {
     await expect(compareScans(h.db, bob, s1.id, s1.id)).rejects.toBeInstanceOf(NotFoundError);
   });
 });
+
+describe('exploit data', () => {
+  it('round-trips vulnerability.exploit through saveScan/getScan', async () => {
+    const report = await makeReport();
+    const exploit = {
+      kev: true,
+      kevDateAdded: '2024-01-02',
+      kevDueDate: '2024-01-23',
+      kevRansomware: true,
+      epss: 0.25,
+      epssPercentile: 0.9,
+    };
+    report.findings[0]!.vulnerability.exploit = exploit;
+    const id = report.findings[0]!.vulnerability.id;
+    const scan = await saveScan(h.db, projectId, report, 'web');
+    const stored = await getScan(h.db, alice, scan.id);
+    const byId = new Map(stored.findings.map((f) => [f.vulnerability.id, f]));
+    expect(byId.get(id)!.vulnerability.exploit).toEqual(exploit);
+    const other = stored.findings.find((f) => f.vulnerability.id !== id)!;
+    expect(other.vulnerability.exploit).toBeUndefined();
+  });
+});

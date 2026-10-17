@@ -13,7 +13,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { Cvss, Reference, ScanSummary, Warning } from '@vulnstack/core';
+import type { Cvss, ExploitInfo, Reference, ScanSummary, Warning } from '@vulnstack/core';
 
 // ---------------------------------------------------------------------------
 // Better Auth core tables (names and columns as Better Auth expects them)
@@ -189,6 +189,8 @@ export const findings = pgTable(
     cvssScore: real('cvss_score'),
     /** Score as of this scan, so history doesn't shift when advisories are rescored. */
     cvss: jsonb('cvss').$type<Cvss>(),
+    /** KEV / EPSS snapshot as of this scan (changes daily, so not on the shared advisory row). */
+    exploit: jsonb('exploit').$type<ExploitInfo>(),
     fixType: text('fix_type').notNull(),
     fixedVersion: text('fixed_version'),
   },

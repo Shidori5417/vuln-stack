@@ -13,7 +13,13 @@ const repoRoot = path.join(import.meta.dirname, '../..');
 // store.ts loads @vulnstack/db with a native dynamic import, which file tracing
 // cannot follow, so list the package and its production dependency tree
 // (core, p-limit -> yocto-queue, drizzle-orm, ...) explicitly.
-const includes = productionClosureGlobs(path.join(repoRoot, 'packages/db'), import.meta.dirname);
+const includes = [
+  // Self-contained build used when the bare specifier does not resolve (see store.ts).
+  '../../packages/db/dist/bundle.js',
+  '../../packages/db/drizzle/**',
+  '../../packages/db/package.json',
+  ...productionClosureGlobs(path.join(repoRoot, 'packages/db'), import.meta.dirname),
+];
 
 const config: NextConfig = {
   poweredByHeader: false,

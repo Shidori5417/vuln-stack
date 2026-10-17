@@ -5,7 +5,10 @@ import { connect } from './store';
 
 const LOCAL_FALLBACK = 'pglite:.data/pglite';
 
-let ready: Promise<Db> | undefined;
+// Next dev re-evaluates modules per bundle (route handlers vs. server components)
+// and on every HMR recompile. A module-level variable would then open several
+// PGlite instances on the same data dir, so the handle lives on globalThis.
+const globalForDb = globalThis as typeof globalThis & { __vulnstackDb?: Promise<Db> };
 
 /** True when a real database URL is configured (as opposed to the local PGlite fallback). */
 export const hasDatabaseUrl = () => Boolean(process.env.DATABASE_URL);
@@ -27,14 +30,14 @@ async function open(): Promise<Db> {
 
 /** Lazy singleton: connects and migrates on first use, never at build time. */
 export function getDb(): Promise<Db> {
-  ready ??= open().catch((e: unknown) => {
-    ready = undefined; // let the next request retry instead of caching the failure
+  globalForDb.__vulnstackDb ??= open().catch((e: unknown) => {
+    globalForDb.__vulnstackDb = undefined; // let the next request retry instead of caching the failure
     throw e;
   });
-  return ready;
+  return globalForDb.__vulnstackDb;
 }
 
 /** Test hook: use an already-migrated database (or pass undefined to reset). */
 export function setDbForTesting(db: Db | undefined): void {
-  ready = db ? Promise.resolve(db) : undefined;
+  globalForDb.__vulnstackDb = db ? Promise.resolve(db) : undefined;
 }

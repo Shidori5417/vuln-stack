@@ -24,7 +24,12 @@ async function create() {
     ...(BETTER_AUTH_SECRET ? { secret: BETTER_AUTH_SECRET } : {}),
     ...(BETTER_AUTH_URL ? { baseURL: BETTER_AUTH_URL } : {}),
     // GitHub access/refresh tokens are encrypted at rest.
-    account: { encryptOAuthTokens: true },
+    account: {
+      encryptOAuthTokens: true,
+      // Re-authorizing GitHub with the optional `repo` scope (linkSocial) hits the
+      // already-linked account: its token is replaced and the scope merged in.
+      accountLinking: { enabled: true, trustedProviders: ['github'] },
+    },
     socialProviders:
       GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET
         ? {

@@ -10,6 +10,7 @@ export function ProjectScanForm({ projectId }: { projectId: string }) {
   return (
     <ScanPanel
       signedIn
+      callbackURL={`/projects/${projectId}`}
       onSubmit={async (body, signal) => {
         const { scanId } = await postProjectScan(projectId, body, signal);
         router.push(`/projects/${projectId}/scans/${scanId}`);

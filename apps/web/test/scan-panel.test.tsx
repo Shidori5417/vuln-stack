@@ -33,8 +33,8 @@ describe('ScanPanel sources', () => {
     expect(await screen.findByRole('button', { name: 'Sign in with GitHub' })).toBeInTheDocument();
     rerender(<ScanPanel onSubmit={onSubmit} signedIn />);
     expect(
-      screen.getByRole('button', { name: 'Grant access to private repositories' }),
-    ).toBeInTheDocument();
+      screen.getAllByRole('button', { name: 'Grant access to private repositories' }).length,
+    ).toBeGreaterThan(0);
   });
 
   it('requires the permission checkbox for website scans', async () => {

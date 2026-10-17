@@ -125,10 +125,17 @@ export const PRIVATE_REPO_MESSAGE =
   'Repository not found or private. Sign in with GitHub and grant access to private repositories to scan it.';
 
 /** Maps the plain Errors thrown by core's GitHub provider to user-facing input errors. */
-function mapGitHubError(e: unknown): unknown {
+export const PRIVATE_REPO_NO_SCOPE_MESSAGE =
+  'Repository not found or private. Your GitHub token cannot see it: grant access to private repositories (the repo scope) and retry.';
+
+export function mapGitHubError(e: unknown, hasUserToken = false): unknown {
   if (!(e instanceof Error)) return e;
   if (/^Not a GitHub repository/.test(e.message)) return new ScanInputError(e.message);
-  if (/not found or private/i.test(e.message)) return new ScanInputError(PRIVATE_REPO_MESSAGE, 404);
+  if (/not found or private/i.test(e.message))
+    return new ScanInputError(
+      hasUserToken ? PRIVATE_REPO_NO_SCOPE_MESSAGE : PRIVATE_REPO_MESSAGE,
+      404,
+    );
   if (/rejected the access token/.test(e.message)) {
     return new ScanInputError(
       'GitHub rejected your access token. Sign out and sign in again, then retry.',
@@ -192,7 +199,7 @@ export async function runScan(
         }),
       );
     } catch (e) {
-      throw mapGitHubError(e);
+      throw mapGitHubError(e, Boolean(deps.githubToken));
     }
   }
 

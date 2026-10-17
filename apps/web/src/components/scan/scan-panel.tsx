@@ -25,6 +25,7 @@ import {
   type PackageRow,
   type ScanBody,
 } from '@/lib/api';
+import { GithubAccessBox } from '@/components/github-access-box';
 import type { UploadFile } from '@/lib/files';
 import { FileDrop } from './file-drop';
 import { ManualEntry } from './manual-entry';
@@ -40,6 +41,8 @@ interface ScanPanelProps {
   signedIn?: boolean;
   /** Whether GitHub OAuth credentials are configured on the server. */
   loginConfigured?: boolean;
+  /** Where GitHub returns the user after auth; defaults to the current page. */
+  callbackURL?: string;
 }
 
 export function ScanPanel({
@@ -47,6 +50,7 @@ export function ScanPanel({
   onSubmit,
   signedIn = false,
   loginConfigured = true,
+  callbackURL,
 }: ScanPanelProps) {
   const [tab, setTab] = useState('files');
   const [files, setFiles] = useState<UploadFile[]>([]);
@@ -70,17 +74,17 @@ export function ScanPanel({
           ? repoUrl.trim() !== ''
           : tab === 'url' && siteUrl.trim() !== '' && consent;
 
-  const githubAuth = async (link: boolean) => {
+  const githubSignIn = async () => {
     if (!loginConfigured) {
       setAuthNotice(loginNotConfiguredNotice(window.location.origin));
       return;
     }
     setAuthNotice(undefined);
     try {
-      const callbackURL = window.location.href;
-      const res = link
-        ? await authClient.linkSocial({ provider: 'github', scopes: ['repo'], callbackURL })
-        : await authClient.signIn.social({ provider: 'github', callbackURL });
+      const res = await authClient.signIn.social({
+        provider: 'github',
+        callbackURL: callbackURL ?? window.location.href,
+      });
       if (res?.error) setAuthNotice(res.error.message || 'GitHub sign-in failed.');
     } catch (e) {
       setAuthNotice(authErrorMessage(e));
@@ -163,27 +167,19 @@ export function ScanPanel({
                 sub-folder). Monorepos are scanned per sub-project. Private repositories need you to
                 sign in with GitHub.
               </p>
-              {error && isPrivateRepoError(error) && (
+              {signedIn && (
+                <GithubAccessBox callbackURL={callbackURL} loginConfigured={loginConfigured} />
+              )}
+              {!signedIn && error && isPrivateRepoError(error) && (
                 <div className="flex items-center gap-3 text-sm">
-                  {signedIn ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void githubAuth(true)}
-                    >
-                      Grant access to private repositories
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void githubAuth(false)}
-                    >
-                      Sign in with GitHub
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void githubSignIn()}
+                  >
+                    Sign in with GitHub
+                  </Button>
                 </div>
               )}
               {authNotice && (
@@ -224,6 +220,9 @@ export function ScanPanel({
         {error && (
           <Alert variant="destructive" className="mt-4">
             {error}
+            {signedIn && isPrivateRepoError(error) && (
+              <GithubAccessBox inline callbackURL={callbackURL} loginConfigured={loginConfigured} />
+            )}
           </Alert>
         )}
 

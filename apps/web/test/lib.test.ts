@@ -85,7 +85,7 @@ describe('upload helpers', () => {
     ]);
     expect(rejected).toEqual(['README.md']);
     expect(isSupportedFile('libs.versions.toml')).toBe(true);
-    expect(isSupportedFile('Cargo.lock')).toBe(false);
+    expect(isSupportedFile('Makefile')).toBe(false);
   });
 
   it('formats sizes', () => {
@@ -116,5 +116,53 @@ describe('isValidRepoInput', () => {
     expect(isValidRepoInput('nonsense')).toBe(false);
     expect(isValidRepoInput('http://github.com/o/r')).toBe(false);
     expect(isValidRepoInput('https://gitlab.com/o/r')).toBe(false);
+  });
+});
+
+describe('exploit filters and sort', () => {
+  const withExploit = (
+    f: (typeof sampleFindings)[number],
+    exploit: NonNullable<(typeof sampleFindings)[number]['vulnerability']['exploit']>,
+  ) => ({ ...f, vulnerability: { ...f.vulnerability, exploit } });
+  const [a, b, c, d] = sampleFindings;
+  const list = [
+    withExploit(a!, { kev: false, epss: 0.02 }),
+    withExploit(b!, { kev: true, kevRansomware: true, epss: 0.1 }),
+    withExploit(c!, { kev: true, epss: 0.9 }),
+    d!,
+  ];
+
+  it('keeps default filters equal and detects the new ones', () => {
+    expect(filtersEqual(DEFAULT_FILTERS, { ...DEFAULT_FILTERS })).toBe(true);
+    expect(filtersEqual(DEFAULT_FILTERS, { ...DEFAULT_FILTERS, knownExploitedOnly: true })).toBe(
+      false,
+    );
+    expect(filtersEqual(DEFAULT_FILTERS, { ...DEFAULT_FILTERS, minEpss: 0.1 })).toBe(false);
+  });
+
+  it('filters known exploited only', () => {
+    const out = filterFindings(list, { ...DEFAULT_FILTERS, knownExploitedOnly: true });
+    expect(ids(out)).toEqual(['CVE-2024-0002', 'CVE-2020-0003']);
+  });
+
+  it('filters by minimum EPSS (missing counts as 0)', () => {
+    expect(ids(filterFindings(list, { ...DEFAULT_FILTERS, minEpss: 0.01 }))).toEqual([
+      'CVE-2021-0001',
+      'CVE-2024-0002',
+      'CVE-2020-0003',
+    ]);
+    expect(ids(filterFindings(list, { ...DEFAULT_FILTERS, minEpss: 0.5 }))).toEqual([
+      'CVE-2020-0003',
+    ]);
+  });
+
+  it('sorts by exploit rank, ransomware first, then EPSS', () => {
+    expect(ids(sortFindings(list, 'exploit'))).toEqual([
+      'CVE-2024-0002',
+      'CVE-2020-0003',
+      'CVE-2021-0001',
+      'GHSA-xxxx-0004',
+    ]);
+    expect(ids(sortFindings(list, 'exploit', true))[0]).toBe('GHSA-xxxx-0004');
   });
 });

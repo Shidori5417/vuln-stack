@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import type { TriageMap } from '@/lib/api';
 import type { SortKey } from '@/lib/filter';
 import { cn } from '@/lib/utils';
+import { ExploitCell } from './exploit';
 import { SeverityBadge } from './severity';
 
 interface Props {
@@ -106,6 +107,7 @@ export function FindingsTable({ findings, sort, onSort, onSelect, triage }: Prop
                 <span className="font-mono text-xs">{f.vulnerability.id}</span>
               </span>
               <TriageBadge entry={triage?.[f.fingerprint]} />
+              {f.vulnerability.exploit && <ExploitCell vulnerability={f.vulnerability} />}
               <span className="block font-medium break-words">
                 {f.dependency.name}{' '}
                 <span className="font-mono text-xs font-normal text-muted-foreground">
@@ -126,7 +128,7 @@ export function FindingsTable({ findings, sort, onSort, onSelect, triage }: Prop
         ))}
       </ul>
       <div className="hidden overflow-x-auto rounded-xl border sm:block">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="w-full min-w-[820px] text-sm">
           <thead className="bg-muted/50 text-left text-muted-foreground">
             <tr>
               <SortHeader
@@ -144,6 +146,13 @@ export function FindingsTable({ findings, sort, onSort, onSelect, triage }: Prop
                 className="min-w-44"
               />
               <SortHeader label="Vulnerability" k="id" sort={sort} onSort={onSort} />
+              <SortHeader
+                label="Exploit"
+                k="exploit"
+                sort={sort}
+                onSort={onSort}
+                className="w-36"
+              />
               <th scope="col" className="px-3 py-2 font-medium">
                 Fix
               </th>
@@ -187,6 +196,9 @@ export function FindingsTable({ findings, sort, onSort, onSelect, triage }: Prop
                   <div className="line-clamp-2 text-muted-foreground">
                     {f.vulnerability.summary}
                   </div>
+                </td>
+                <td className="px-3 py-2.5">
+                  <ExploitCell vulnerability={f.vulnerability} />
                 </td>
                 <td className="px-3 py-2.5">
                   <FixCell finding={f} />

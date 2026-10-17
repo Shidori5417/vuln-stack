@@ -6,15 +6,18 @@ import { CircleCheckIcon, DownloadIcon, InfoIcon, RotateCcwIcon, SearchIcon } fr
 import { useMemo, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input, Label, NativeSelect } from '@/components/ui/input';
 import type { TriageMap, TriageStatus } from '@/lib/api';
 import { download } from '@/lib/download';
 import {
   DEFAULT_FILTERS,
+  countKnownExploited,
   ecosystemsIn,
   filterFindings,
   filtersEqual,
+  MIN_EPSS_OPTIONS,
   sortFindings,
   type FindingFilters,
   type SortKey,
@@ -54,6 +57,7 @@ export function ResultsView({ report, onReset, triage, onTriage }: ResultsViewPr
   const ecosystems = ecosystemsIn(report.findings);
   const { summary } = report;
   const safe = report.findings.filter((f) => f.remediation.type === 'safe-patch').length;
+  const exploited = countKnownExploited(report.findings);
   const stamp = report.startedAt.slice(0, 10);
 
   const toggleSeverity = (s: Severity) =>
@@ -151,6 +155,14 @@ export function ResultsView({ report, onReset, triage, onTriage }: ResultsViewPr
             in <strong>{summary.vulnerableDependencies}</strong> of {summary.dependencies}{' '}
             dependencies · <span className="text-ok">{safe} fixable without a major upgrade</span>
           </p>
+          {exploited > 0 && (
+            <p className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge variant="critical">{exploited} known exploited</Badge>
+              <span className="text-muted-foreground">
+                listed in the CISA catalog of vulnerabilities attacked in the wild
+              </span>
+            </p>
+          )}
 
           <div className="flex flex-wrap items-end gap-3">
             <div className="relative min-w-64 flex-1">
@@ -213,6 +225,31 @@ export function ResultsView({ report, onReset, triage, onTriage }: ResultsViewPr
               />
               Fixable only
             </label>
+            <label className="flex h-9 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 accent-current"
+                checked={filters.knownExploitedOnly}
+                onChange={(e) => setFilters({ ...filters, knownExploitedOnly: e.target.checked })}
+              />
+              Known exploited only
+            </label>
+            <div className="space-y-1">
+              <Label htmlFor="epss-filter" className="text-xs text-muted-foreground">
+                Min EPSS
+              </Label>
+              <NativeSelect
+                id="epss-filter"
+                value={String(filters.minEpss)}
+                onChange={(e) => setFilters({ ...filters, minEpss: Number(e.target.value) })}
+              >
+                {MIN_EPSS_OPTIONS.map((o) => (
+                  <option key={o.value} value={String(o.value)}>
+                    {o.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
             {(triage || onTriage) && (
               <label className="flex h-9 items-center gap-2 text-sm">
                 <input

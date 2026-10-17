@@ -1,4 +1,5 @@
 import { findOrCreateProject, saveScan, verifyApiToken } from '@/server/store';
+import { ECOSYSTEMS, type Ecosystem } from '@vulnstack/core';
 import { z } from 'zod';
 import {
   config,
@@ -29,7 +30,7 @@ const findingSchema = z.looseObject({
   fingerprint: z.string().min(1).max(500),
   subproject: z.string(),
   dependency: z.looseObject({
-    ecosystem: z.enum(['npm', 'PyPI', 'Packagist', 'Maven', 'Go', 'NuGet']),
+    ecosystem: z.enum(ECOSYSTEMS as unknown as [Ecosystem, ...Ecosystem[]]),
     name: z.string(),
     version: z.string(),
     isDirect: z.boolean(),

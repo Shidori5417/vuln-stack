@@ -30,7 +30,8 @@ export function HomeView({ loginConfigured }: { loginConfigured: boolean }) {
         </h1>
         <p className="mx-auto max-w-2xl text-muted-foreground text-balance">
           Drop your lock files or list your packages. VulnStack checks the exact versions against
-          OSV.dev and the GitHub Advisory Database — npm, PyPI, Composer, Maven, Go and NuGet.
+          OSV.dev and the GitHub Advisory Database — npm, PyPI, Composer, Maven, Go, NuGet,
+          RubyGems, Cargo, Hex, Pub and Swift.
         </p>
       </section>
       <ScanPanel

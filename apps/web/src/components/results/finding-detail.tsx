@@ -1,6 +1,6 @@
 'use client';
 
-import type { Finding } from '@vulnstack/core/meta';
+import { formatEpss, type Finding } from '@vulnstack/core/meta';
 import { ExternalLinkIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Label, Textarea } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import type { TriageMap, TriageStatus } from '@/lib/api';
 import { idUrl } from '@/lib/filter';
+import { EPSS_URL, KEV_URL, kevTitle } from './exploit';
 import { FixCell, TRIAGE_LABEL } from './findings-table';
 import { SeverityBadge } from './severity';
 
@@ -114,6 +115,68 @@ function TriageControls({
         )}
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
+    </section>
+  );
+}
+
+function ExploitationSection({ exploit }: { exploit: Finding['vulnerability']['exploit'] }) {
+  const epss = formatEpss(exploit?.epss);
+  if (!exploit || (!exploit.kev && !epss)) return null;
+  const percentile =
+    exploit.epssPercentile === undefined ? undefined : Math.round(exploit.epssPercentile * 100);
+  return (
+    <section className="space-y-2 rounded-lg border p-3" aria-label="Exploitation">
+      <h4 className="text-sm font-medium">Exploitation</h4>
+      {exploit.kev && (
+        <div className="space-y-1 text-sm">
+          <Badge variant="critical" title={kevTitle(exploit)}>
+            Known exploited
+          </Badge>
+          <p className="text-muted-foreground">
+            Attackers are already using this vulnerability in the wild, according to the{' '}
+            <a
+              href={KEV_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              CISA Known Exploited Vulnerabilities catalog
+            </a>
+            . Treat it as urgent.
+          </p>
+          <dl className="space-y-1">
+            {exploit.kevDateAdded && <Row label="Added to KEV">{exploit.kevDateAdded}</Row>}
+            {exploit.kevDueDate && <Row label="Due date">{exploit.kevDueDate}</Row>}
+            {exploit.kevRansomware && (
+              <Row label="Ransomware">Known to be used in ransomware campaigns</Row>
+            )}
+          </dl>
+        </div>
+      )}
+      {epss && (
+        <div className="space-y-1 text-sm">
+          <p>
+            <span className="font-medium tabular-nums">EPSS {epss}</span>
+            {percentile !== undefined && (
+              <span className="text-muted-foreground"> · percentile {percentile}%</span>
+            )}
+          </p>
+          <p className="text-muted-foreground">
+            The{' '}
+            <a
+              href={EPSS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              Exploit Prediction Scoring System
+            </a>{' '}
+            estimates the probability that this vulnerability will be exploited in the next 30 days.
+            A higher percentile means it is more likely to be exploited than most other
+            vulnerabilities.
+          </p>
+        </div>
+      )}
     </section>
   );
 }
@@ -239,6 +302,8 @@ export function FindingDetail({
               <Row label="Weakness">{finding.vulnerability.cwes.join(', ')}</Row>
             )}
           </dl>
+
+          <ExploitationSection exploit={finding.vulnerability.exploit} />
 
           {finding.vulnerability.details && (
             <section className="space-y-1">

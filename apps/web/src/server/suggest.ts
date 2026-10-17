@@ -62,6 +62,60 @@ const SOURCES: Partial<Record<Ecosystem, Source>> = {
       ...(d.latestVersion ? { version: d.latestVersion } : {}),
     }));
   },
+  RubyGems: async (q, fetch) => {
+    const data = await getJson<{ name: string; version: string; info?: string }[]>(
+      fetch,
+      `https://rubygems.org/api/v1/search.json?query=${encodeURIComponent(q)}`,
+    );
+    return (Array.isArray(data) ? data : []).slice(0, 8).map((p) => ({
+      name: p.name,
+      version: p.version,
+      ...(p.info ? { description: p.info.slice(0, 140) } : {}),
+    }));
+  },
+  'crates.io': async (q, fetch) => {
+    const data = await getJson<{
+      crates?: {
+        name: string;
+        max_stable_version?: string;
+        max_version?: string;
+        description?: string;
+      }[];
+    }>(fetch, `https://crates.io/api/v1/crates?per_page=8&q=${encodeURIComponent(q)}`);
+    return (data?.crates ?? []).map((c) => {
+      const version = c.max_stable_version ?? c.max_version;
+      return {
+        name: c.name,
+        ...(version ? { version } : {}),
+        ...(c.description ? { description: c.description.slice(0, 140) } : {}),
+      };
+    });
+  },
+  Hex: async (q, fetch) => {
+    const data = await getJson<
+      {
+        name: string;
+        latest_stable_version?: string;
+        latest_version?: string;
+        meta?: { description?: string };
+      }[]
+    >(fetch, `https://hex.pm/api/packages?search=${encodeURIComponent(q)}`);
+    return (Array.isArray(data) ? data : []).slice(0, 8).map((p) => {
+      const version = p.latest_stable_version ?? p.latest_version;
+      return {
+        name: p.name,
+        ...(version ? { version } : {}),
+        ...(p.meta?.description ? { description: p.meta.description.slice(0, 140) } : {}),
+      };
+    });
+  },
+  Pub: async (q, fetch) => {
+    const data = await getJson<{ packages?: { package: string }[] }>(
+      fetch,
+      `https://pub.dev/api/search?q=${encodeURIComponent(q)}`,
+    );
+    return (data?.packages ?? []).slice(0, 8).map((p) => ({ name: p.package }));
+  },
   // PyPI has no search API: confirm an exact name instead.
   PyPI: async (q, fetch) => {
     const data = await getJson<{ info?: { name: string; version: string; summary?: string } }>(
@@ -80,7 +134,7 @@ const SOURCES: Partial<Record<Ecosystem, Source>> = {
   },
 };
 
-/** Package name suggestions; empty for ecosystems without a search API (Go). */
+/** Package name suggestions; empty for ecosystems without a search API (Go, SwiftURL). */
 export async function suggest(
   ecosystem: Ecosystem,
   query: string,

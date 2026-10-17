@@ -182,6 +182,8 @@ export async function runScan(
   const options: ScanOptions = {
     cache: deps.cache ?? (await defaultCache()),
     signal: AbortSignal.timeout(config.scanTimeoutMs),
+    kev: config.kev,
+    epss: config.epss,
   };
   if (deps.fetch) options.fetch = deps.fetch;
   if (config.githubToken) options.ghsa = { token: config.githubToken };

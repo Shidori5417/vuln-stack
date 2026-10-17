@@ -50,6 +50,8 @@ describe('readConfig', () => {
       scansPerMinute: 10,
       trustProxy: false,
       scanTimeoutMs: 55_000,
+      kev: true,
+      epss: true,
     });
     const c = readConfig({
       VULNSTACK_MAX_UPLOAD_MB: '2',
@@ -64,6 +66,10 @@ describe('readConfig', () => {
       githubToken: 't',
       nvdApiKey: 'k',
       scansPerMinute: 10,
+    });
+    expect(readConfig({ VULNSTACK_KEV: '0', VULNSTACK_EPSS: '0' })).toMatchObject({
+      kev: false,
+      epss: false,
     });
   });
 });
@@ -197,5 +203,74 @@ describe('suggest', () => {
         throw new Error('x');
       }),
     ).toEqual([]);
+  });
+});
+
+describe('runScan exploit enrichment', () => {
+  const kevFetch: FetchFn = async (url, init) => {
+    if (url.includes('known_exploited_vulnerabilities')) {
+      return json({
+        vulnerabilities: [
+          {
+            cveID: 'CVE-2021-44906',
+            dateAdded: '2024-01-02',
+            dueDate: '2024-01-23',
+            knownRansomwareCampaignUse: 'Known',
+          },
+        ],
+      });
+    }
+    if (url.startsWith('https://api.first.org/data/v1/epss')) {
+      return json({ data: [{ cve: 'CVE-2021-44906', epss: '0.25', percentile: '0.9' }] });
+    }
+    return osvFetch(url, init);
+  };
+  const files = [
+    {
+      path: 'package-lock.json',
+      content: JSON.stringify({
+        lockfileVersion: 3,
+        packages: {
+          '': { dependencies: { minimist: '1.2.0' } },
+          'node_modules/minimist': { version: '1.2.0' },
+        },
+      }),
+    },
+  ];
+
+  it('adds KEV and EPSS data by default', async () => {
+    const report = await runScan({ type: 'files', files }, config, {
+      fetch: kevFetch,
+      cache: new MemoryCache(),
+    });
+    expect(report.findings[0]!.vulnerability.exploit).toMatchObject({
+      kev: true,
+      kevDateAdded: '2024-01-02',
+      kevRansomware: true,
+      epss: 0.25,
+    });
+  });
+
+  it('skips enrichment when disabled in the config', async () => {
+    const report = await runScan(
+      { type: 'files', files },
+      { ...config, kev: false, epss: false },
+      { fetch: kevFetch, cache: new MemoryCache() },
+    );
+    expect(report.findings[0]!.vulnerability.exploit?.kev).not.toBe(true);
+    expect(report.findings[0]!.vulnerability.exploit?.epss).toBeUndefined();
+  });
+
+  it('surfaces kev-failed as a warning without failing the scan', async () => {
+    const failing: FetchFn = async (url, init) =>
+      url.includes('known_exploited_vulnerabilities')
+        ? new Response('boom', { status: 500 })
+        : kevFetch(url, init);
+    const report = await runScan({ type: 'files', files }, config, {
+      fetch: failing,
+      cache: new MemoryCache(),
+    });
+    expect(report.findings).toHaveLength(1);
+    expect(report.warnings.some((w) => w.code === 'kev-failed')).toBe(true);
   });
 });

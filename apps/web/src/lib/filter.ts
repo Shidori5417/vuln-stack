@@ -1,4 +1,11 @@
-import { SEVERITY_ORDER, type Ecosystem, type Finding, type Severity } from '@vulnstack/core/meta';
+import {
+  exploitRank,
+  isKnownExploited,
+  SEVERITY_ORDER,
+  type Ecosystem,
+  type Finding,
+  type Severity,
+} from '@vulnstack/core/meta';
 
 export interface FindingFilters {
   query: string;
@@ -6,6 +13,9 @@ export interface FindingFilters {
   ecosystem: Ecosystem | 'all';
   relation: 'all' | 'direct' | 'transitive';
   fixableOnly: boolean;
+  knownExploitedOnly: boolean;
+  /** Minimum EPSS probability (0..1); 0 = any. */
+  minEpss: number;
 }
 
 export const DEFAULT_FILTERS: FindingFilters = {
@@ -14,6 +24,8 @@ export const DEFAULT_FILTERS: FindingFilters = {
   ecosystem: 'all',
   relation: 'all',
   fixableOnly: false,
+  knownExploitedOnly: false,
+  minEpss: 0,
 };
 
 export function filtersEqual(a: FindingFilters, b: FindingFilters): boolean {
@@ -22,12 +34,14 @@ export function filtersEqual(a: FindingFilters, b: FindingFilters): boolean {
     a.ecosystem === b.ecosystem &&
     a.relation === b.relation &&
     a.fixableOnly === b.fixableOnly &&
+    a.knownExploitedOnly === b.knownExploitedOnly &&
+    a.minEpss === b.minEpss &&
     a.severities.length === b.severities.length &&
     a.severities.every((s, i) => s === b.severities[i])
   );
 }
 
-export type SortKey = 'severity' | 'package' | 'id';
+export type SortKey = 'severity' | 'package' | 'id' | 'exploit';
 
 export function filterFindings(findings: Finding[], f: FindingFilters): Finding[] {
   const q = f.query.trim().toLowerCase();
@@ -37,6 +51,8 @@ export function filterFindings(findings: Finding[], f: FindingFilters): Finding[
     if (f.relation === 'direct' && !x.dependency.isDirect) return false;
     if (f.relation === 'transitive' && x.dependency.isDirect) return false;
     if (f.fixableOnly && x.remediation.type === 'no-fix') return false;
+    if (f.knownExploitedOnly && !isKnownExploited(x.vulnerability)) return false;
+    if (f.minEpss > 0 && (x.vulnerability.exploit?.epss ?? 0) < f.minEpss) return false;
     if (q) {
       const haystack = [
         x.dependency.name,
@@ -61,6 +77,9 @@ export function sortFindings(findings: Finding[], key: SortKey, descending = fal
       (b.vulnerability.cvss?.score ?? 0) - (a.vulnerability.cvss?.score ?? 0),
     package: (a, b) =>
       a.dependency.name.localeCompare(b.dependency.name) || sevRank(a) - sevRank(b),
+    // Most urgent first (KEV, then EPSS); ties fall back to severity.
+    exploit: (a, b) =>
+      exploitRank(b.vulnerability) - exploitRank(a.vulnerability) || sevRank(a) - sevRank(b),
     id: (a, b) => a.vulnerability.id.localeCompare(b.vulnerability.id),
   };
   const sorted = [...findings].sort(cmp[key]);
@@ -79,4 +98,15 @@ export function idUrl(id: string): string {
   if (upper.startsWith('GHSA-'))
     return `https://github.com/advisories/${encodeURIComponent(upper)}`;
   return `https://osv.dev/vulnerability/${encodeURIComponent(id)}`;
+}
+
+export const MIN_EPSS_OPTIONS = [
+  { value: 0, label: 'Any' },
+  { value: 0.01, label: '1% or more' },
+  { value: 0.1, label: '10% or more' },
+  { value: 0.5, label: '50% or more' },
+] as const;
+
+export function countKnownExploited(findings: Finding[]): number {
+  return findings.filter((f) => isKnownExploited(f.vulnerability)).length;
 }

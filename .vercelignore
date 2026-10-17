@@ -1,0 +1,17 @@
+# Keeps a `vercel deploy` upload from the repo root small. The build needs
+# apps/, packages/, the root manifests and the lockfile; the rest is not used.
+node_modules
+.next
+.turbo
+.data
+coverage
+dist
+fixtures
+docs
+.git
+.github
+.claude
+*.log
+.env
+.env.*
+!.env.example

@@ -95,3 +95,26 @@ docker compose up -d --build
 ```
 
 Migrations are applied on start. Take a database backup before upgrading across releases.
+
+## Deploying to Vercel
+
+The web app also runs on Vercel (Hobby plan is enough) with an external Postgres. PGlite is a development fallback only: without `DATABASE_URL`, anonymous scanning and the home page still work, but sign-in and saved projects answer "Database not configured".
+
+1. Import the repository and set **Root Directory** to `apps/web` (keep "Include source files outside of the Root Directory" enabled). `apps/web/vercel.json` already sets the install command (`cd ../.. && pnpm install --frozen-lockfile`) and the build command (`cd ../.. && pnpm turbo run build --filter=@vulnstack/web...`), which also builds `@vulnstack/core` and `@vulnstack/db`.
+2. Add the environment variable `ENABLE_EXPERIMENTAL_COREPACK=1` so Vercel uses the pnpm version pinned in the root `package.json` (`packageManager`, currently `pnpm@12.11.2`). Use Node.js 22 or newer (Project Settings, General).
+3. Set the environment variables below, then deploy from git, or run `vercel deploy` from the repository root (`.vercelignore` keeps the upload small).
+
+| Variable                                   | Notes                                                                                   |
+| ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                             | Postgres connection string, for example from Neon (use the pooled connection string).   |
+| `BETTER_AUTH_SECRET`                       | At least 32 random characters. Changing it makes stored GitHub tokens unreadable.       |
+| `BETTER_AUTH_URL`                          | The public origin of the deployment, for example `https://your-app.vercel.app`.         |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub OAuth app; the callback URL is `<BETTER_AUTH_URL>/api/auth/callback/github`.     |
+| `REDIS_URL`                                | Optional shared advisory cache, for example from Upstash (use the `rediss://` TCP URL). |
+| `VULNSTACK_TRUST_PROXY`                    | Set to `1` so rate limiting uses the client address from Vercel's forwarded headers.    |
+
+Notes:
+
+- Migrations run on the first database access of each cold instance. Connections are opened per instance, so prefer a pooled connection string.
+- The scan routes (`/api/scan`, `/api/v1/upload`, `/api/projects/[id]/scans`) declare `maxDuration = 60`, the Hobby plan limit. `VULNSTACK_SCAN_TIMEOUT_MS` (default 55000) must stay below it.
+- Rate-limit counters live in memory per function instance, so limits are approximate on serverless. `REDIS_URL` only backs the shared advisory cache.

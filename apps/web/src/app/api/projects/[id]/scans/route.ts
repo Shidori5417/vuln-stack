@@ -14,6 +14,8 @@ import { getDb } from '@/server/db';
 import { runScan, ScanInputError } from '@/server/scan';
 
 export const runtime = 'nodejs';
+// Vercel function limit (ignored by the Docker/standalone server). Keep VULNSTACK_SCAN_TIMEOUT_MS below it.
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 const isTimeout = (e: unknown) =>

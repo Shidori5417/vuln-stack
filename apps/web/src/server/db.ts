@@ -13,8 +13,17 @@ const globalForDb = globalThis as typeof globalThis & { __vulnstackDb?: Promise<
 /** True when a real database URL is configured (as opposed to the local PGlite fallback). */
 export const hasDatabaseUrl = () => Boolean(process.env.DATABASE_URL);
 
+/** Thrown instead of falling back to PGlite where the filesystem is read-only (Vercel). */
+export class DatabaseNotConfiguredError extends Error {
+  constructor() {
+    super('Database not configured: set DATABASE_URL to a Postgres connection string.');
+    this.name = 'DatabaseNotConfiguredError';
+  }
+}
+
 async function open(): Promise<Db> {
   const url = process.env.DATABASE_URL;
+  if (!url && process.env.VERCEL) throw new DatabaseNotConfiguredError();
   if (!url) {
     console.warn(`DATABASE_URL is not set; using local PGlite at ${LOCAL_FALLBACK} (dev only).`);
   }

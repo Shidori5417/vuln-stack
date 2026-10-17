@@ -30,9 +30,14 @@ import {
   type Subproject,
 } from '@vulnstack/core';
 import type { ServerConfig } from './config';
-import { nodeResolve } from '@vulnstack/core/node';
+import { lookup } from 'node:dns/promises';
 import { getDb, hasDatabaseUrl } from './db';
 import { pinnedFetch } from './pinned-fetch';
+
+// Not imported from @vulnstack/core/node: that entry also holds the offline-database
+// writers, whose dynamic fs paths make Next trace the whole monorepo into the output.
+const nodeResolve = async (hostname: string): Promise<string[]> =>
+  (await lookup(hostname, { all: true, verbatim: true })).map((r) => r.address);
 
 export class ScanInputError extends Error {
   constructor(

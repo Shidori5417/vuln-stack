@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vulnstack/vulnstack/blob/main/docs/report-schema.json",
+  "title": "VulnStack JSON report",
+  "description": "Output of `vulnstack scan --format json` (schemaVersion 1). New optional fields may be added without bumping schemaVersion; removals or meaning changes bump it.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "tool",
+    "startedAt",
+    "durationMs",
+    "subprojects",
+    "findings",
+    "summary",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "tool": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": { "name": { "const": "vulnstack" }, "version": { "type": "string" } }
+    },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "subprojects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "ecosystem", "root", "dependencies", "warnings"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Folder relative to the scan root ('' = root, 'manual' for manual input)"
+          },
+          "ecosystem": { "$ref": "#/$defs/ecosystem" },
+          "root": {
+            "type": "string",
+            "description": "Project name used as the first element of chains"
+          },
+          "dependencies": { "type": "array", "items": { "$ref": "#/$defs/dependency" } },
+          "warnings": { "type": "array", "items": { "$ref": "#/$defs/warning" } }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" },
+      "description": "Sorted by severity, then CVSS score"
+    },
+    "ignored": {
+      "type": "array",
+      "description": "Findings suppressed by --ignore or .vulnstackignore",
+      "items": {
+        "type": "object",
+        "required": ["finding", "rule"],
+        "properties": {
+          "finding": { "$ref": "#/$defs/finding" },
+          "rule": {
+            "type": "object",
+            "required": ["id", "source"],
+            "properties": {
+              "id": { "type": "string" },
+              "package": { "type": "string" },
+              "until": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+              "reason": { "type": "string" },
+              "source": { "type": "string", "description": "e.g. .vulnstackignore:3 or --ignore" }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "subprojects",
+        "dependencies",
+        "vulnerableDependencies",
+        "findings",
+        "bySeverity"
+      ],
+      "properties": {
+        "subprojects": { "type": "integer", "minimum": 0 },
+        "dependencies": { "type": "integer", "minimum": 0 },
+        "vulnerableDependencies": { "type": "integer", "minimum": 0 },
+        "findings": { "type": "integer", "minimum": 0 },
+        "bySeverity": {
+          "type": "object",
+          "required": ["critical", "high", "medium", "low", "unknown"],
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
+    "detected": {
+      "type": "array",
+      "description": "Technologies fingerprinted from a website scan (informational)",
+      "items": {
+        "type": "object",
+        "required": ["name", "source", "confidence"],
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "type": "string" },
+          "source": { "type": "string", "description": "Asset URL, 'headers' or 'meta'" },
+          "confidence": { "enum": ["high", "medium", "low"] }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ecosystem": { "enum": ["npm", "PyPI", "Packagist", "Maven", "Go", "NuGet"] },
+    "severity": { "enum": ["critical", "high", "medium", "low", "unknown"] },
+    "warning": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Stable identifier, e.g. no-lockfile, non-registry-version, nvd-partial"
+        },
+        "message": { "type": "string" },
+        "file": { "type": "string" }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "required": ["ecosystem", "name", "version", "isDirect", "sourceFile", "confidence"],
+      "properties": {
+        "ecosystem": { "$ref": "#/$defs/ecosystem" },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "isDirect": { "type": "boolean" },
+        "sourceFile": { "type": "string" },
+        "confidence": {
+          "enum": ["high", "medium", "low"],
+          "description": "high = pinned by a lock file or the user; medium = resolved from a range; low = guessed"
+        },
+        "declaredRange": { "type": "string" },
+        "scope": { "enum": ["prod", "dev", "optional", "peer"] },
+        "internal": {
+          "type": "boolean",
+          "description": "First-party workspace member (never scanned)"
+        }
+      }
+    },
+    "cvss": {
+      "type": "object",
+      "required": ["score", "vector", "version", "source"],
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 10 },
+        "vector": { "type": "string" },
+        "version": { "enum": ["3.0", "3.1", "4.0"] },
+        "source": { "enum": ["nvd", "ghsa", "osv"], "description": "Precedence: NVD > GHSA > OSV" }
+      }
+    },
+    "vulnerability": {
+      "type": "object",
+      "required": ["id", "aliases", "summary", "severity", "references", "affected", "cwes"],
+      "properties": {
+        "id": { "type": "string", "description": "Preferred id: CVE, else GHSA, else other" },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "All known ids, including id"
+        },
+        "summary": { "type": "string" },
+        "details": { "type": "string" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "cvss": { "$ref": "#/$defs/cvss" },
+        "published": { "type": "string" },
+        "modified": { "type": "string" },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "url"],
+            "properties": { "type": { "type": "string" }, "url": { "type": "string" } }
+          }
+        },
+        "affected": {
+          "type": "array",
+          "description": "OSV-style affected ranges",
+          "items": {
+            "type": "object",
+            "required": ["ecosystem", "name", "ranges", "versions"],
+            "properties": {
+              "ecosystem": { "type": "string" },
+              "name": { "type": "string" },
+              "ranges": { "type": "array" },
+              "versions": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "cwes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "fingerprint",
+        "subproject",
+        "dependency",
+        "chain",
+        "pathCount",
+        "vulnerability",
+        "remediation"
+      ],
+      "properties": {
+        "fingerprint": {
+          "type": "string",
+          "description": "Stable across scans: subproject|ecosystem|package|vulnerability id"
+        },
+        "subproject": { "type": "string" },
+        "dependency": { "$ref": "#/$defs/dependency" },
+        "chain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 2,
+          "description": "Shortest path from the project, e.g. [my-app, express, body-parser]"
+        },
+        "pathCount": { "type": "integer", "minimum": 1 },
+        "vulnerability": { "$ref": "#/$defs/vulnerability" },
+        "remediation": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "enum": ["safe-patch", "breaking-update", "no-fix"] },
+            "fixedVersion": {
+              "type": "string",
+              "description": "Lowest version that is no longer affected"
+            }
+          }
+        }
+      }
+    }
+  }
+}

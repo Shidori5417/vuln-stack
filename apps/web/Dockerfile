@@ -12,6 +12,10 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 RUN mkdir -p apps/web/public \
  && pnpm turbo run build --filter=@vulnstack/web...
+# Next's file tracing can't see the native `import('@vulnstack/db')`, so the db
+# package and its whole production dependency tree (core, p-limit, ...) are
+# deployed on their own and replace the incomplete traced copy below.
+RUN pnpm --filter @vulnstack/db deploy --prod --legacy /deploy/db
 
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production \
@@ -26,6 +30,7 @@ COPY --from=build --chown=vulnstack:vulnstack /repo/apps/web/.next/standalone ./
 COPY --from=build --chown=vulnstack:vulnstack /repo/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build --chown=vulnstack:vulnstack /repo/apps/web/public ./apps/web/public
 COPY --from=build --chown=vulnstack:vulnstack /repo/packages/db/drizzle ./packages/db/drizzle
+COPY --from=build --chown=vulnstack:vulnstack /deploy/db /app/apps/web/node_modules/@vulnstack/db
 RUN mkdir -p /app/apps/web/.data && chown vulnstack:vulnstack /app/apps/web/.data
 USER vulnstack
 EXPOSE 3000

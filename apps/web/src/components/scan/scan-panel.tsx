@@ -11,12 +11,20 @@ import {
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
+import { authErrorMessage, loginNotConfiguredNotice } from '@/lib/auth-notice';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { filesBody, isPrivateRepoError, postScan, type PackageRow, type ScanBody } from '@/lib/api';
+import {
+  filesBody,
+  isValidRepoInput,
+  isPrivateRepoError,
+  postScan,
+  type PackageRow,
+  type ScanBody,
+} from '@/lib/api';
 import type { UploadFile } from '@/lib/files';
 import { FileDrop } from './file-drop';
 import { ManualEntry } from './manual-entry';
@@ -30,9 +38,16 @@ interface ScanPanelProps {
   onSubmit?: (body: ScanBody, signal: AbortSignal) => Promise<void>;
   /** Whether the visitor is signed in (decides which private-repo action is offered). */
   signedIn?: boolean;
+  /** Whether GitHub OAuth credentials are configured on the server. */
+  loginConfigured?: boolean;
 }
 
-export function ScanPanel({ onResult, onSubmit, signedIn = false }: ScanPanelProps) {
+export function ScanPanel({
+  onResult,
+  onSubmit,
+  signedIn = false,
+  loginConfigured = true,
+}: ScanPanelProps) {
   const [tab, setTab] = useState('files');
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [rows, setRows] = useState<PackageRow[]>([]);
@@ -41,6 +56,8 @@ export function ScanPanel({ onResult, onSubmit, signedIn = false }: ScanPanelPro
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [repoError, setRepoError] = useState<string>();
+  const [authNotice, setAuthNotice] = useState<string>();
   const controller = useRef<AbortController | undefined>(undefined);
 
   const validRows = rows.filter((r) => r.name.trim());
@@ -53,7 +70,29 @@ export function ScanPanel({ onResult, onSubmit, signedIn = false }: ScanPanelPro
           ? repoUrl.trim() !== ''
           : tab === 'url' && siteUrl.trim() !== '' && consent;
 
+  const githubAuth = async (link: boolean) => {
+    if (!loginConfigured) {
+      setAuthNotice(loginNotConfiguredNotice(window.location.origin));
+      return;
+    }
+    setAuthNotice(undefined);
+    try {
+      const callbackURL = window.location.href;
+      const res = link
+        ? await authClient.linkSocial({ provider: 'github', scopes: ['repo'], callbackURL })
+        : await authClient.signIn.social({ provider: 'github', callbackURL });
+      if (res?.error) setAuthNotice(res.error.message || 'GitHub sign-in failed.');
+    } catch (e) {
+      setAuthNotice(authErrorMessage(e));
+    }
+  };
+
   const scan = async () => {
+    if (tab === 'repo' && !isValidRepoInput(repoUrl)) {
+      setRepoError('Enter owner/repo or a https://github.com/owner/repo URL.');
+      return;
+    }
+    setRepoError(undefined);
     setBusy(true);
     setError(undefined);
     controller.current = new AbortController();
@@ -106,8 +145,18 @@ export function ScanPanel({ onResult, onSubmit, signedIn = false }: ScanPanelPro
                 id="repo-url"
                 placeholder="owner/repo"
                 value={repoUrl}
-                onChange={(e) => setRepoUrl(e.target.value)}
+                className="h-11 text-base"
+                aria-invalid={repoError ? true : undefined}
+                onChange={(e) => {
+                  setRepoUrl(e.target.value);
+                  setRepoError(undefined);
+                }}
               />
+              {repoError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {repoError}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Examples: <code>vercel/next.js</code>, <code>https://github.com/owner/repo</code>,{' '}
                 <code>https://github.com/owner/repo/tree/main/packages/app</code> (a branch and
@@ -121,13 +170,7 @@ export function ScanPanel({ onResult, onSubmit, signedIn = false }: ScanPanelPro
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        void authClient.linkSocial({
-                          provider: 'github',
-                          scopes: ['repo'],
-                          callbackURL: window.location.href,
-                        })
-                      }
+                      onClick={() => void githubAuth(true)}
                     >
                       Grant access to private repositories
                     </Button>
@@ -136,17 +179,17 @@ export function ScanPanel({ onResult, onSubmit, signedIn = false }: ScanPanelPro
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        void authClient.signIn.social({
-                          provider: 'github',
-                          callbackURL: window.location.href,
-                        })
-                      }
+                      onClick={() => void githubAuth(false)}
                     >
                       Sign in with GitHub
                     </Button>
                   )}
                 </div>
+              )}
+              {authNotice && (
+                <p role="status" className="text-sm text-muted-foreground">
+                  {authNotice}
+                </p>
               )}
             </div>
           </TabsContent>
@@ -157,6 +200,7 @@ export function ScanPanel({ onResult, onSubmit, signedIn = false }: ScanPanelPro
                 id="site-url"
                 placeholder="https://example.com"
                 value={siteUrl}
+                className="h-11 text-base"
                 onChange={(e) => setSiteUrl(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">

@@ -4,16 +4,23 @@ import { LogInIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
+import { authErrorMessage, loginNotConfiguredNotice } from '@/lib/auth-notice';
 
 export function SignInButton({ configured }: { configured: boolean }) {
   const [notice, setNotice] = useState<string>();
 
   const signIn = async () => {
     if (!configured) {
-      setNotice('Sign-in is not configured on this server (GitHub OAuth credentials are missing).');
+      setNotice(loginNotConfiguredNotice(window.location.origin));
       return;
     }
-    await authClient.signIn.social({ provider: 'github', callbackURL: '/dashboard' });
+    try {
+      setNotice(undefined);
+      const res = await authClient.signIn.social({ provider: 'github', callbackURL: '/dashboard' });
+      if (res?.error) setNotice(res.error.message || 'GitHub sign-in failed.');
+    } catch (e) {
+      setNotice(authErrorMessage(e));
+    }
   };
 
   return (
@@ -24,7 +31,7 @@ export function SignInButton({ configured }: { configured: boolean }) {
       {notice && (
         <span
           role="status"
-          className="absolute top-full right-0 z-50 mt-2 w-64 rounded-md border bg-popover p-3 text-xs text-popover-foreground shadow-md"
+          className="absolute top-full right-0 z-50 mt-2 w-72 rounded-md border bg-popover p-3 text-xs text-popover-foreground shadow-md"
         >
           {notice}
         </span>

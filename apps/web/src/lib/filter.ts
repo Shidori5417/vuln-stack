@@ -16,6 +16,17 @@ export const DEFAULT_FILTERS: FindingFilters = {
   fixableOnly: false,
 };
 
+export function filtersEqual(a: FindingFilters, b: FindingFilters): boolean {
+  return (
+    a.query === b.query &&
+    a.ecosystem === b.ecosystem &&
+    a.relation === b.relation &&
+    a.fixableOnly === b.fixableOnly &&
+    a.severities.length === b.severities.length &&
+    a.severities.every((s, i) => s === b.severities[i])
+  );
+}
+
 export type SortKey = 'severity' | 'package' | 'id';
 
 export function filterFindings(findings: Finding[], f: FindingFilters): Finding[] {
@@ -62,7 +73,10 @@ export function ecosystemsIn(findings: Finding[]): Ecosystem[] {
 
 /** Link for an id: NVD for CVEs, GitHub for GHSA, OSV for the rest. */
 export function idUrl(id: string): string {
-  if (id.startsWith('CVE-')) return `https://nvd.nist.gov/vuln/detail/${id}`;
-  if (id.startsWith('GHSA-')) return `https://github.com/advisories/${id}`;
-  return `https://osv.dev/vulnerability/${id}`;
+  const upper = id.toUpperCase();
+  if (upper.startsWith('CVE-'))
+    return `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(upper)}`;
+  if (upper.startsWith('GHSA-'))
+    return `https://github.com/advisories/${encodeURIComponent(upper)}`;
+  return `https://osv.dev/vulnerability/${encodeURIComponent(id)}`;
 }

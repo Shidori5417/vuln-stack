@@ -77,3 +77,19 @@ export const postProjectScan = (projectId: string, body: ScanBody, signal?: Abor
 
 export type TriageStatus = 'accepted' | 'false_positive';
 export type TriageMap = Record<string, { status: TriageStatus; note: string | null }>;
+
+/** `owner/repo` or an https://github.com/... URL (optionally with /tree/<ref>/<path>). */
+export function isValidRepoInput(input: string): boolean {
+  const v = input.trim();
+  if (/^[\w.-]+\/[\w.-]+$/.test(v)) return true;
+  try {
+    const u = new URL(v);
+    return (
+      u.protocol === 'https:' &&
+      (u.hostname === 'github.com' || u.hostname === 'www.github.com') &&
+      /^\/[\w.-]+\/[\w.-]+(\/.*)?$/.test(u.pathname)
+    );
+  } catch {
+    return false;
+  }
+}

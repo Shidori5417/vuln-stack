@@ -14,6 +14,7 @@ import {
   DEFAULT_FILTERS,
   ecosystemsIn,
   filterFindings,
+  filtersEqual,
   sortFindings,
   type FindingFilters,
   type SortKey,
@@ -152,15 +153,15 @@ export function ResultsView({ report, onReset, triage, onTriage }: ResultsViewPr
           </p>
 
           <div className="flex flex-wrap items-end gap-3">
-            <div className="relative min-w-56 flex-1">
+            <div className="relative min-w-64 flex-1">
               <SearchIcon
-                className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground"
+                className="pointer-events-none absolute top-3.5 left-2.5 size-4 text-muted-foreground"
                 aria-hidden
               />
               <Input
                 aria-label="Search findings"
                 placeholder="Search package, CVE, summary…"
-                className="pl-8"
+                className="h-11 pl-8 text-base"
                 value={filters.query}
                 onChange={(e) => setFilters({ ...filters, query: e.target.value })}
               />
@@ -223,7 +224,7 @@ export function ResultsView({ report, onReset, triage, onTriage }: ResultsViewPr
                 Hide triaged{triagedCount > 0 ? ` (${triagedCount})` : ''}
               </label>
             )}
-            {filters !== DEFAULT_FILTERS && (
+            {!filtersEqual(filters, DEFAULT_FILTERS) && (
               <Button variant="ghost" size="sm" onClick={() => setFilters(DEFAULT_FILTERS)}>
                 Clear
               </Button>
@@ -233,6 +234,14 @@ export function ResultsView({ report, onReset, triage, onTriage }: ResultsViewPr
           <p className="text-xs text-muted-foreground" aria-live="polite">
             Showing {visible.length} of {report.findings.length}
           </p>
+          {visible.length === 0 && (
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-10 text-sm text-muted-foreground">
+              <p>No findings match your filters</p>
+              <Button variant="outline" size="sm" onClick={() => setFilters(DEFAULT_FILTERS)}>
+                Clear
+              </Button>
+            </div>
+          )}
           <FindingsTable
             findings={visible}
             sort={sort}

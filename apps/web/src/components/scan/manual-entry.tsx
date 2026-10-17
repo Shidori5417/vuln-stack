@@ -45,6 +45,7 @@ function NameInput({
         list={listId}
         value={row.name}
         placeholder="package name"
+        className="h-11 text-base"
         onChange={(e) => {
           const picked = suggestions.find((s) => s.name === e.target.value);
           onChange(e.target.value, !row.version && picked?.version ? picked.version : undefined);
@@ -144,7 +145,7 @@ export function ManualEntry({ rows, onChange }: Props) {
                 value={row.version}
                 placeholder="latest"
                 onChange={(e) => update(i, { version: e.target.value })}
-                className="max-sm:col-span-2 max-sm:row-start-3"
+                className="h-11 text-base max-sm:col-span-2 max-sm:row-start-3"
               />
               <Button
                 type="button"

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FILTERS, ecosystemsIn, filterFindings, idUrl, sortFindings } from '@/lib/filter';
+import {
+  DEFAULT_FILTERS,
+  ecosystemsIn,
+  filterFindings,
+  filtersEqual,
+  idUrl,
+  sortFindings,
+} from '@/lib/filter';
+import { isValidRepoInput } from '@/lib/api';
 import { acceptFiles, formatBytes, isSupportedFile } from '@/lib/files';
 import { sampleFindings } from './sample';
 
@@ -53,6 +61,9 @@ describe('filterFindings', () => {
     expect(idUrl('CVE-1')).toBe('https://nvd.nist.gov/vuln/detail/CVE-1');
     expect(idUrl('GHSA-1')).toBe('https://github.com/advisories/GHSA-1');
     expect(idUrl('PYSEC-1')).toBe('https://osv.dev/vulnerability/PYSEC-1');
+    expect(idUrl('cve-2024-1')).toBe('https://nvd.nist.gov/vuln/detail/CVE-2024-1');
+    expect(idUrl('ghsa-abcd')).toBe('https://github.com/advisories/GHSA-ABCD');
+    expect(idUrl('X/1?a')).toBe('https://osv.dev/vulnerability/X%2F1%3Fa');
   });
 });
 
@@ -81,5 +92,29 @@ describe('upload helpers', () => {
     expect(formatBytes(500)).toBe('500 B');
     expect(formatBytes(2048)).toBe('2.0 KB');
     expect(formatBytes(3 * 1024 * 1024)).toBe('3.0 MB');
+  });
+});
+
+describe('filtersEqual', () => {
+  it('compares by value', () => {
+    expect(filtersEqual({ ...DEFAULT_FILTERS, severities: [] }, DEFAULT_FILTERS)).toBe(true);
+    expect(filtersEqual({ ...DEFAULT_FILTERS, query: 'a' }, DEFAULT_FILTERS)).toBe(false);
+    expect(filtersEqual({ ...DEFAULT_FILTERS, severities: ['low'] }, DEFAULT_FILTERS)).toBe(false);
+    expect(
+      filtersEqual(
+        { ...DEFAULT_FILTERS, severities: ['low', 'high'] },
+        { ...DEFAULT_FILTERS, severities: ['low', 'high'] },
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('isValidRepoInput', () => {
+  it('accepts owner/repo and github URLs only', () => {
+    expect(isValidRepoInput('vercel/next.js')).toBe(true);
+    expect(isValidRepoInput('https://github.com/o/r/tree/main/p')).toBe(true);
+    expect(isValidRepoInput('nonsense')).toBe(false);
+    expect(isValidRepoInput('http://github.com/o/r')).toBe(false);
+    expect(isValidRepoInput('https://gitlab.com/o/r')).toBe(false);
   });
 });

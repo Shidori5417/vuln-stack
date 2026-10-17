@@ -14,6 +14,8 @@ import {
   parseGitHubUrl,
   scanGitHubRepo,
   scanManual,
+  summarize,
+  isKnownExploited,
   scanWebsite,
   type FailLevel,
   type IgnoreRule,
@@ -22,7 +24,13 @@ import {
   type ScanResult,
   type Warning,
 } from '@vulnstack/core';
-import { FileCache, FsFileProvider, nodeResolve, openOfflineDatabase } from '@vulnstack/core/node';
+import {
+  FileCache,
+  FsFileProvider,
+  loadExploitData,
+  nodeResolve,
+  openOfflineDatabase,
+} from '@vulnstack/core/node';
 import { offlineDir } from './db.js';
 import { EXIT_ERROR, EXIT_FINDINGS, EXIT_OK, type CliIO } from '../io.js';
 import { createFetch, createPinnedFetch } from '../net.js';
@@ -57,6 +65,13 @@ export interface ScanCommandOptions {
   apiUrl?: string;
   offline?: boolean;
   offlineDir?: string;
+  /** Commander `--no-kev` / `--no-epss`: true unless disabled. */
+  kev?: boolean;
+  epss?: boolean;
+  kevOnly?: boolean;
+  /** 0..1 */
+  minEpss?: number;
+  failOnKev?: boolean;
 }
 
 export const IGNORE_FILE = '.vulnstackignore';
@@ -152,6 +167,18 @@ export async function runScan(
   options: ScanCommandOptions,
   io: CliIO,
 ): Promise<number> {
+  if (options.kevOnly && options.kev === false) {
+    io.stderr.write('✖ --kev-only cannot be combined with --no-kev.\n');
+    return EXIT_ERROR;
+  }
+  if (options.failOnKev && options.kev === false) {
+    io.stderr.write('✖ --fail-on-kev cannot be combined with --no-kev.\n');
+    return EXIT_ERROR;
+  }
+  if (options.minEpss !== undefined && options.epss === false) {
+    io.stderr.write('✖ --min-epss cannot be combined with --no-epss.\n');
+    return EXIT_ERROR;
+  }
   const modes = [
     path !== undefined,
     Boolean(options.manual),
@@ -203,6 +230,8 @@ export async function runScan(
     includeDev: options.dev,
     resolveRanges: options.resolve,
     ...sourceOptions(options, io.env),
+    kev: options.kev !== false,
+    epss: options.epss !== false,
   };
   const fetch = io.fetch ?? createFetch(io.env);
   if (fetch) scanOptions.fetch = fetch;
@@ -225,8 +254,18 @@ export async function runScan(
   );
 
   // Offline: indexes are loaded lazily, per ecosystem actually queried.
-  if (options.offline)
-    scanOptions.offline = await openOfflineDatabase(offlineDir(options.offlineDir, io.cwd));
+  if (options.offline) {
+    const dir = offlineDir(options.offlineDir, io.cwd);
+    const db = await openOfflineDatabase(dir);
+    // A missing KEV/EPSS file becomes one `offline-missing-exploit-data` warning from core.
+    const exploit = scanOptions.kev || scanOptions.epss ? await loadExploitData(dir) : undefined;
+    scanOptions.offline = {
+      query: (eco, name, version) => db.query(eco, name, version),
+      warnings: () => db.warnings(),
+      builtAt: { ...db.builtAt, ...exploit?.builtAt },
+      ...(exploit ? { exploit } : {}),
+    };
+  }
 
   let scanned: ScanResult;
   try {
@@ -247,10 +286,25 @@ export async function runScan(
   } finally {
     progress.clear();
   }
-  const result = applyIgnores(
+  const afterIgnores = applyIgnores(
     { ...scanned, warnings: [...scanned.warnings, ...ignores.warnings] },
     ignores.rules,
   );
+  // --fail-on-kev looks at what remains after ignores, before display filters.
+  const hasKev = afterIgnores.findings.some((f) => isKnownExploited(f.vulnerability));
+  let result = afterIgnores;
+  if (options.kevOnly || options.minEpss !== undefined) {
+    const findings = afterIgnores.findings.filter(
+      (f) =>
+        (!options.kevOnly || isKnownExploited(f.vulnerability)) &&
+        (options.minEpss === undefined || (f.vulnerability.exploit?.epss ?? 0) >= options.minEpss),
+    );
+    result = {
+      ...afterIgnores,
+      findings,
+      summary: summarize(afterIgnores.subprojects, findings),
+    };
+  }
 
   const toFile = Boolean(options.output);
   let rendered: string | Uint8Array;
@@ -271,6 +325,7 @@ export async function runScan(
       rendered = renderReport(result, {
         colors: colorsFor(toFile ? {} : io.stdout, io.env),
         width: toFile ? 120 : (io.stdout.columns ?? 120),
+        ...(io.prog ? { prog: io.prog } : {}),
       });
   }
 
@@ -302,11 +357,16 @@ export async function runScan(
   }
   if (uploadFailed) return EXIT_ERROR;
 
+  let failed = false;
   if (options.failOn && exceedsThreshold(result.findings, options.failOn)) {
     if (options.format !== 'table' || toFile) {
       io.stderr.write(`Found vulnerabilities at or above "${options.failOn}" (--fail-on)\n`);
     }
-    return EXIT_FINDINGS;
+    failed = true;
   }
-  return EXIT_OK;
+  if (options.failOnKev && hasKev) {
+    io.stderr.write('Found known exploited vulnerabilities (--fail-on-kev)\n');
+    failed = true;
+  }
+  return failed ? EXIT_FINDINGS : EXIT_OK;
 }

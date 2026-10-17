@@ -19,7 +19,8 @@
   },
   "type": "module",
   "bin": {
-    "vulnstack": "./dist/index.js"
+    "vulnstack": "./dist/index.js",
+    "vulnscan": "./dist/index.js"
   },
   "files": [
     "dist"

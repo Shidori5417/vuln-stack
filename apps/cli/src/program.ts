@@ -1,3 +1,4 @@
+import { basename } from 'node:path';
 import { Command, CommanderError, InvalidArgumentError, Option } from 'commander';
 import { VERSION } from '@vulnstack/core';
 import { FAIL_LEVELS } from '@vulnstack/core';
@@ -6,10 +7,29 @@ import { FORMATS, runScan, type ScanCommandOptions } from './commands/scan.js';
 import { EXIT_ERROR, EXIT_OK, type CliIO } from './io.js';
 import { colorsFor } from './render/colors.js';
 
+/** `vulnscan` when invoked through that bin name, `vulnstack` otherwise. */
+export function programName(argv1: string | undefined): 'vulnstack' | 'vulnscan' {
+  const base = basename(argv1 ?? '')
+    .replace(/\.(c|m)?js$/, '')
+    .toLowerCase();
+  return base === 'vulnscan' ? 'vulnscan' : 'vulnstack';
+}
+
+/** `--min-epss`: a fraction (0.3), a percent (30) or an explicit percent (30%). */
+export function parseMinEpss(value: string): number {
+  const text = value.trim();
+  const pct = text.endsWith('%');
+  const n = Number(pct ? text.slice(0, -1) : text);
+  const frac = pct || n > 1 ? n / 100 : n;
+  if (!Number.isFinite(n) || n < 0 || frac > 1)
+    throw new InvalidArgumentError('must be between 0 and 1 (or a percent such as 30 or 30%)');
+  return frac;
+}
+
 export async function runCli(argv: string[], io: CliIO): Promise<number> {
   let exitCode = EXIT_OK;
   const program = new Command()
-    .name('vulnstack')
+    .name(io.prog ?? 'vulnstack')
     .description('Find known vulnerabilities (CVE / GHSA) in your dependencies')
     .version(VERSION, '-v, --version')
     .exitOverride()
@@ -82,6 +102,18 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
       'enrich CVSS scores from NVD even without NVD_API_KEY (slow: 5 requests / 30 s)',
     )
     .option('--no-nvd', 'do not query NVD even when NVD_API_KEY is set')
+    .option('--no-kev', 'do not mark CVEs in the CISA Known Exploited Vulnerabilities catalog')
+    .option('--no-epss', 'do not add FIRST EPSS exploit-probability scores')
+    .option('--kev-only', 'only show findings that are known to be exploited (CISA KEV)')
+    .option(
+      '--min-epss <value>',
+      'only show findings with EPSS at or above this (0-1 or percent, e.g. 0.3, 30 or 30%)',
+      parseMinEpss,
+    )
+    .option(
+      '--fail-on-kev',
+      'exit with code 1 when a known-exploited finding remains after ignores',
+    )
     .addOption(
       new Option('--nvd-timeout <seconds>', 'time budget for NVD enrichment')
         .default(10)
@@ -103,14 +135,15 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
     .description('Download OSV dumps and build the offline database')
     .option(
       '--ecosystem <eco...>',
-      'ecosystems to update (default: all of npm PyPI Packagist Maven Go NuGet)',
+      'ecosystems to update (default: all of npm PyPI Packagist Maven Go NuGet RubyGems crates.io Hex Pub SwiftURL)',
     )
     .option('--dir <path>', 'database folder (default: <cache dir>/offline)')
+    .option('--no-exploit', 'skip the CISA KEV and FIRST EPSS downloads')
     .action(async (options: DbOptions) => {
       exitCode = await runDbUpdate(options, io);
     });
   db.command('status')
-    .description('Show when each ecosystem was last updated')
+    .description('Show when each ecosystem and the KEV / EPSS data were last updated')
     .option('--dir <path>', 'database folder (default: <cache dir>/offline)')
     .action(async (options: DbOptions) => {
       exitCode = await runDbStatus(options, io);

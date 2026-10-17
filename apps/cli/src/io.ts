@@ -12,6 +12,8 @@ export interface CliIO {
   stdout: Writable;
   stderr: Writable;
   cwd: string;
+  /** Name the CLI was invoked as (vulnstack | vulnscan). */
+  prog?: string;
   env: Record<string, string | undefined>;
   fetch?: FetchFn;
   cache?: CacheStore;

@@ -20,7 +20,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: vulnstack/vulnstack@v1
+      - uses: Shidori5417/vuln-stack@v1
         with:
           fail-on: high
           github-token: ${{ secrets.GITHUB_TOKEN }}

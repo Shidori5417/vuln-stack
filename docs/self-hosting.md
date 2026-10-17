@@ -5,7 +5,7 @@ The web app (`apps/web`) is a Next.js server. It needs PostgreSQL for accounts a
 ## Docker Compose quick start
 
 ```sh
-git clone https://github.com/vulnstack/vulnstack.git
+git clone https://github.com/Shidori5417/vuln-stack.git
 cd vulnstack
 cp .env.example .env
 # edit .env: set BETTER_AUTH_SECRET (>= 32 chars), e.g. `openssl rand -base64 32`

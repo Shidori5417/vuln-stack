@@ -70,7 +70,7 @@ function netContext(options: ScanOptions): NetContext {
     fetch: options.fetch ?? ((input, init) => globalThis.fetch(input, init)),
     cache: options.cache ?? new MemoryCache(),
     userAgent:
-      options.userAgent ?? `vulnstack/${VERSION} (+https://github.com/vulnstack/vulnstack)`,
+      options.userAgent ?? `vulnstack/${VERSION} (+https://github.com/Shidori5417/vuln-stack)`,
   };
   if (options.signal) net.signal = options.signal;
   return net;

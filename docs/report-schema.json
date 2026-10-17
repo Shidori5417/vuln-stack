@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/vulnstack/vulnstack/blob/main/docs/report-schema.json",
+  "$id": "https://github.com/Shidori5417/vuln-stack/blob/main/docs/report-schema.json",
   "title": "VulnStack JSON report",
   "description": "Output of `vulnstack scan --format json` (schemaVersion 1). New optional fields may be added without bumping schemaVersion; removals or meaning changes bump it.",
   "type": "object",

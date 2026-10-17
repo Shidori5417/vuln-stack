@@ -13,7 +13,7 @@ pnpm is configured conservatively (`pnpm-workspace.yaml`): dependency build scri
 ## Setup
 
 ```sh
-git clone https://github.com/vulnstack/vulnstack.git
+git clone https://github.com/Shidori5417/vuln-stack.git
 cd vulnstack
 pnpm install
 pnpm build

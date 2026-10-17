@@ -20,7 +20,7 @@ const FALLBACK_SCORE: Record<Severity, string> = {
 };
 
 export const SARIF_SCHEMA = 'https://json.schemastore.org/sarif-2.1.0.json';
-export const VULNSTACK_URL = 'https://github.com/vulnstack/vulnstack';
+export const VULNSTACK_URL = 'https://github.com/Shidori5417/vuln-stack';
 
 function referenceUrl(v: Vulnerability): string {
   return v.references.find((r) => r.type === 'ADVISORY')?.url ?? advisoryUrl(v.id);

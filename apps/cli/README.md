@@ -66,7 +66,7 @@ vulnstack scan --offline
 ## CI
 
 ```yaml
-- uses: vulnstack/vulnstack@v1
+- uses: Shidori5417/vuln-stack@v1
   with:
     fail-on: high
 ```

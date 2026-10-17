@@ -153,7 +153,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: vulnstack/vulnstack@v1
+      - uses: Shidori5417/vuln-stack@v1
         with:
           fail-on: high
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -195,6 +195,12 @@ docker compose up -d --build
 ```
 
 Full instructions, environment variables, GitHub OAuth setup, reverse proxy and backups: [docs/self-hosting.md](docs/self-hosting.md).
+
+### GitHub login setup
+
+1. Create a GitHub OAuth App (Settings > Developer settings > OAuth Apps) with the callback URL `<site-origin>/api/auth/callback/github`, e.g. `http://localhost:3000/api/auth/callback/github`.
+2. In `apps/web/.env.local` set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `BETTER_AUTH_SECRET` (random, 32+ chars) and `BETTER_AUTH_URL` (the site origin).
+3. Restart the dev server.
 
 ## Architecture
 

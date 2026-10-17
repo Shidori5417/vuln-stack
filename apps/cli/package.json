@@ -4,14 +4,14 @@
   "description": "Find known vulnerabilities (CVE / GHSA) in your project's dependencies",
   "license": "MIT",
   "author": "VulnStack contributors",
-  "homepage": "https://github.com/vulnstack/vulnstack#readme",
+  "homepage": "https://github.com/Shidori5417/vuln-stack#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vulnstack/vulnstack.git",
+    "url": "git+https://github.com/Shidori5417/vuln-stack.git",
     "directory": "apps/cli"
   },
   "bugs": {
-    "url": "https://github.com/vulnstack/vulnstack/issues"
+    "url": "https://github.com/Shidori5417/vuln-stack/issues"
   },
   "publishConfig": {
     "access": "public",

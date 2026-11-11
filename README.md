@@ -47,13 +47,15 @@ When a lock file is present, manifests next to it are only used as context (for 
 
 Requires Node.js 22.12 or newer.
 
+> **Not on npm yet** (`npm view vulnstack` returns 404), so `npx vulnstack` only works after the first release. Until then, build a checkout and use the linked command or `node apps/cli/dist/index.js` (see [Global install](#global-install-and-direct-commands)).
+
 ```sh
 npx vulnstack scan                       # scan the current folder
 npx vulnstack scan path/to/project
 npx vulnstack scan --manual "react@18.2.0,express@4.17.1"
 npx vulnstack scan -f json -o report.json
 npx vulnstack scan --repo owner/repo     # GitHub repo, no clone
-npx vulnstack scan --url https://example.com --i-own-this-site
+npx vulnstack scan --url https://your-site.example --i-own-this-site
 ```
 
 ## CLI usage
@@ -184,13 +186,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Shidori5417/vuln-stack@v1
+      - uses: Shidori5417/vuln-stack@main # pin a release tag once one exists
         with:
           fail-on: high
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Inputs: `path`, `fail-on`, `format`, `output`, `version`, `github-token`, `nvd-api-key`, `upload-sarif`. See [action.yml](action.yml) and [.github/examples/vulnstack.yml](.github/examples/vulnstack.yml).
+Inputs: `path`, `fail-on`, `format`, `output`, `version`, `github-token`, `nvd-api-key`, `upload-sarif`. See [action.yml](action.yml) and [.github/examples/vulnstack.yml](.github/examples/vulnstack.yml). The action runs `npx vulnstack@<version>`, so it (like the `npx` examples below) needs the npm release first.
 
 ### Plain npx
 
@@ -238,7 +240,7 @@ Full instructions, environment variables, GitHub OAuth setup, reverse proxy and 
 ```text
 vulnstack/
   apps/
-    cli/        vulnstack command (commander, tsup bundle, published to npm)
+    cli/        vulnstack command (commander, tsup bundle, npm package)
     web/        Next.js app: UI, REST API, GitHub sign-in (Better Auth)
   packages/
     core/       framework-agnostic scanning engine and reporters
@@ -264,7 +266,7 @@ flowchart LR
 
 ## Privacy and security
 
-- The CLI sends package names and versions (not your source code or file contents) to OSV.dev, and to GitHub / NVD when enabled. Package registries are contacted only to resolve manifest ranges (`--no-resolve` disables this).
+- The CLI sends package names and versions (not your source code or file contents) to OSV.dev, and to GitHub / NVD when enabled. Package registries are contacted only to resolve manifest ranges (`--no-resolve` disables this). `--upload` sends the JSON report (dependency and finding data) to the web app you configure.
 - Website scanning is passive and needs explicit consent; it refuses private and internal addresses. See [docs/website-scanning.md](docs/website-scanning.md).
 - In the web app, GitHub access tokens are encrypted at rest, API tokens are stored only as SHA-256 hashes, and the `repo` scope is requested only on demand when you scan a private repository.
 - Report vulnerabilities in VulnStack itself privately: see [SECURITY.md](SECURITY.md).

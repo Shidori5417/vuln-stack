@@ -52,7 +52,7 @@ runs:
         set +e
         npx --yes "vulnstack@${VS_VERSION}" scan "$VS_PATH" --format "$VS_FORMAT" --output "$VS_OUTPUT" --fail-on "$VS_FAIL_ON"
         echo "code=$?" >> "$GITHUB_OUTPUT"
-    - uses: github/codeql-action/upload-sarif@v3
+    - uses: github/codeql-action/upload-sarif@v4
       if: always() && inputs.upload-sarif == 'true' && inputs.format == 'sarif' && hashFiles(inputs.output) != ''
       with:
         sarif_file: ${{ inputs.output }}

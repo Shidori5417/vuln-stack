@@ -1,5 +1,8 @@
 # VulnStack
 
+[![CI](https://github.com/Shidori5417/vuln-stack/actions/workflows/ci.yml/badge.svg)](https://github.com/Shidori5417/vuln-stack/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Find known vulnerabilities (CVE / GHSA) in the exact versions of the dependencies your project uses, with the dependency chain that pulls each one in and the lowest version that fixes it.
 
 VulnStack is an open-source (MIT) CLI and web app. It reads your lock files, asks [OSV.dev](https://osv.dev) (plus the GitHub Advisory Database and NVD when configured) and reports what is affected.
@@ -45,17 +48,25 @@ When a lock file is present, manifests next to it are only used as context (for 
 
 ## Quick start
 
-Requires Node.js 22.12 or newer.
+Requires Node.js 22.12 or newer and pnpm.
 
-> **Not on npm yet** (`npm view vulnstack` returns 404), so `npx vulnstack` only works after the first release. Until then, build a checkout and use the linked command or `node apps/cli/dist/index.js` (see [Global install](#global-install-and-direct-commands)).
+> **Not on npm yet** (`npm view vulnstack` returns 404), so build and link from source first; `npx vulnstack` will work once the first npm release is published.
 
 ```sh
-npx vulnstack scan                       # scan the current folder
-npx vulnstack scan path/to/project
-npx vulnstack scan --manual "react@18.2.0,express@4.17.1"
-npx vulnstack scan -f json -o report.json
-npx vulnstack scan --repo owner/repo     # GitHub repo, no clone
-npx vulnstack scan --url https://your-site.example --i-own-this-site
+git clone https://github.com/Shidori5417/vuln-stack.git
+cd vuln-stack
+pnpm install && pnpm cli:link
+```
+
+Then run `vulnstack` from any project folder:
+
+```sh
+vulnstack scan                           # scan the current folder
+vulnstack scan path/to/project
+vulnstack scan --manual "react@18.2.0,express@4.17.1"
+vulnstack scan -f json -o report.json
+vulnstack scan --repo owner/repo         # GitHub repo, no clone
+vulnstack scan --url https://your-site.example --i-own-this-site
 ```
 
 ## CLI usage

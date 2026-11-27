@@ -14,7 +14,7 @@ pnpm is configured conservatively (`pnpm-workspace.yaml`): dependency build scri
 
 ```sh
 git clone https://github.com/Shidori5417/vuln-stack.git
-cd vulnstack
+cd vuln-stack
 pnpm install
 pnpm build
 pnpm test

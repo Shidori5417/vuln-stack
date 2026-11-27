@@ -119,6 +119,36 @@ packages:
     expect(graph.nodes.get('lodash@4.17.15')!.isDirect).toBe(true);
     expect(parsePnpmLock('', 'pnpm-lock.yaml', 'empty').graph.nodes.size).toBe(0);
   });
+
+  it('reads the project lock when pnpm 11+ prepends an environment lockfile document', () => {
+    const lock = [
+      "lockfileVersion: '9.0'",
+      '',
+      'importers:',
+      '  .:',
+      '    configDependencies: {}',
+      '',
+      '---',
+      "lockfileVersion: '9.0'",
+      '',
+      'importers:',
+      '  .:',
+      '    dependencies:',
+      '      lodash:',
+      '        specifier: 4.17.15',
+      '        version: 4.17.15',
+      '',
+      'packages:',
+      '  lodash@4.17.15:',
+      '    resolution: {integrity: sha512-x}',
+      '',
+      'snapshots:',
+      '  lodash@4.17.15: {}',
+      '',
+    ].join('\n');
+    const { graph } = parsePnpmLock(lock, 'pnpm-lock.yaml', 'multi-doc');
+    expect(find(graph, 'lodash')[1].version).toBe('4.17.15');
+  });
 });
 
 describe('yarn.lock v1', () => {

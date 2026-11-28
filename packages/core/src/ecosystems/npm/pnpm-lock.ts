@@ -1,4 +1,4 @@
-import { parse as parseYaml } from 'yaml';
+import { parseAllDocuments } from 'yaml';
 import {
   addEdge,
   addNode,
@@ -83,12 +83,26 @@ function importerDeps(imp: Importer): { name: string; ref: string; dev: boolean 
   return out;
 }
 
+/**
+ * pnpm 11+ may prepend a second YAML document (the environment lockfile for
+ * `packageManager`/config dependencies) separated by `---`. The project lock is
+ * always the last document; older single-document locks are unaffected.
+ */
+function readPnpmLock(content: string): PnpmLock {
+  const docs = parseAllDocuments(content);
+  const doc = docs[docs.length - 1];
+  if (!doc) return {};
+  const error = doc.errors[0];
+  if (error) throw error;
+  return (doc.toJS() ?? {}) as PnpmLock;
+}
+
 export function parsePnpmLock(
   content: string,
   sourceFile: string,
   rootName: string,
 ): LockParseResult {
-  const lock = (parseYaml(content) ?? {}) as PnpmLock;
+  const lock = readPnpmLock(content);
   const graph = createGraph(rootName);
   const warnings: Warning[] = [];
   const entries = lock.snapshots ?? lock.packages ?? {};
@@ -180,6 +194,6 @@ export function parsePnpmLock(
 
 /** True when `rel` (path relative to the lock's folder) is one of the lock's importers. */
 export function pnpmHasImporter(content: string, rel: string): boolean {
-  const lock = (parseYaml(content) ?? {}) as PnpmLock;
+  const lock = readPnpmLock(content);
   return Boolean(lock.importers?.[rel]);
 }

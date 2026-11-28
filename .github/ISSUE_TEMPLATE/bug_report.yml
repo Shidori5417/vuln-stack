@@ -1,0 +1,32 @@
+name: Bug report
+description: Something in the CLI, core library or web app does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For security issues do **not** open a public issue; see [SECURITY.md](https://github.com/Shidori5417/vuln-stack/blob/main/SECURITY.md).
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options: [CLI, Web app, Core library, GitHub Action, Docs, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include the command or steps, what you expected and what you got.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 'vulnstack --version, or git commit SHA'
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      placeholder: OS, Node.js version, ecosystem / lock file type

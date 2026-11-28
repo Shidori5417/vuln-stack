@@ -3,5 +3,5 @@
 # status: active | prototype | released | maintenance | paused | archived
 status: released
 focus:
-  en: "Live on Vercel; the CLI and web app cover 11 ecosystems."
+  en: 'Live on Vercel; the CLI and web app cover 11 ecosystems.'
   tr: "Vercel'de yayında; CLI ve web uygulaması 11 ekosistemi kapsıyor."
